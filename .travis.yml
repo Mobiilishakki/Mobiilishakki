@@ -11,4 +11,5 @@ before_script:
   - cd Mobiilishakki
 
 script:
+  - cd Mobiilishakki
   - ./gradlew build connectedCheck
