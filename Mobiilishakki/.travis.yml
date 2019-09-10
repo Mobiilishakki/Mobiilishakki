@@ -6,7 +6,9 @@ android:
     - platform-tools
     - build-tools-29.0.2
     - android-28
-addons:
-  apt:
-    packages:
-      ant
+
+before_script:
+  - cd Mobiilishakki
+
+script:
+  - ./gradlew build connectedCheck
