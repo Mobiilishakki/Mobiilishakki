@@ -64,7 +64,3 @@ script:
   - cd Mobiilishakki
   - ./gradlew build connectedCheck
 
-
-
-
-
