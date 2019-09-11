@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
-import android.view.View;
 import android.view.WindowManager;
 
 import org.opencv.android.BaseLoaderCallback;
@@ -15,20 +14,32 @@ import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
-import static org.opencv.imgproc.Imgproc.LINE_AA;
-import static org.opencv.imgproc.Imgproc.line;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
+import static org.opencv.imgproc.Imgproc.COLOR_BGR2GRAY;
+import static org.opencv.imgproc.Imgproc.LINE_8;
+import static org.opencv.imgproc.Imgproc.RETR_TREE;
+import static org.opencv.imgproc.Imgproc.approxPolyDP;
+import static org.opencv.imgproc.Imgproc.arcLength;
+import static org.opencv.imgproc.Imgproc.contourArea;
+import static org.opencv.imgproc.Imgproc.drawContours;
+import static org.opencv.imgproc.Imgproc.isContourConvex;
 
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
+    // Latest frame that was processed
+    private Mat lastFrame;
     // Used for logging success or failure messages
     private static final String TAG = "OpenCVTest::Activity";
-    // Used to determine what type of video user wants to see
-    private int videoStyle = 1;
     // Loads camera view of OpenCV to use.
     private CameraBridgeViewBase cameraBridgeViewBase;
     // OpenCV manager to help our app communicate with android phone to make OpenCV work
@@ -46,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
     };
+    private int skipCounter = 0;
 
 
     @Override
@@ -58,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cameraBridgeViewBase = (JavaCameraView) findViewById(R.id.cameraView);
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(this);
-
+        cameraBridgeViewBase.enableFpsMeter();
 
     }
 
@@ -72,46 +84,67 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     }
 
+    @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+
+        // performance boost --> skip frames to cut the load
+        if(this.lastFrame != null){
+            skipCounter++;
+            if(skipCounter > 15) {
+                skipCounter = 0;
+                return lastFrame;
+            }
+        }
+
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
+
         // Mat object for holding gray frame
         Mat grayFrame = new Mat();
-        Imgproc.cvtColor(rgbFrame, grayFrame, Imgproc.COLOR_RGB2GRAY);
-        // Mat object for holding result of the edge detection (Canny)
+        Imgproc.cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
+        // Mat object for holding the result of edge detection (Canny)
         Mat edges = new Mat();
         Imgproc.Canny(grayFrame, edges, 50, 150, 3, false);
-        // Mat object for holding result of the line detection (Hough lines)
-        Mat lines = new Mat();
-        Imgproc.HoughLines(edges, lines, 1, Math.PI/180, 150);
 
-        // select frame to fill with detected lines
-        Mat result;
-        switch(videoStyle){
-            case 3:
-                result = grayFrame;
-                break;
-            case 2:
-                result = edges;
-                break;
-            default:
-                // case 1
-                result = rgbFrame;
-                break;
+        // Find contours from the frame
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(edges, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+        MatOfPoint2f approxCurve = new MatOfPoint2f();
+
+        // performance boost --> if small amount of contours --> cant be chessboard
+        if(contours.size() < 40) {
+            return rgbFrame;
         }
 
-        // draw line to output frame
-        for(int x = 0; x < lines.rows(); x++){
-            double rho = lines.get(x, 0)[0], theta = lines.get(x, 0)[1];
-            double a = Math.cos(theta), b = Math.sin(theta);
-            double x0 = a*rho, y0 = b * rho;
-            Point pt1 = new Point(Math.round(x0 + 1000 * (-b)), Math.round(y0 + 1000 * a));
-            Point pt2 = new Point(Math.round(x0 - 1000 * (-b)), Math.round(y0 - 1000 * a));
-            line(result, pt1, pt2, new Scalar(0, 0, 255), 3, LINE_AA, 0);
-        }
+        // for each contour found
+        for (int i = 0; i < contours.size(); i++){
 
-        // return output frame
-        return result;
+            MatOfPoint2f contour2f = new MatOfPoint2f(contours.get(i).toArray());
+            double approxDistance = arcLength(contour2f, true) * 0.02;
+
+            if(approxDistance > 1){
+                approxPolyDP(contour2f, approxCurve, approxDistance, true);
+                MatOfPoint points = new MatOfPoint(approxCurve.toArray());
+
+                // Rectangle checks
+                if (points.total() == 4 && Math.abs(contourArea(points)) > 1000 && isContourConvex(points)){
+                    double cos = 0;
+                    double mcos = 0;
+                    for(int sc = 2; sc < 5; sc++) {
+                        if(cos > mcos) {
+                            mcos = cos;
+                        }
+                    }
+                    if(mcos < 0.3) {
+
+                        drawContours(rgbFrame, contours, i, new Scalar(255, 0, 0), 2, LINE_8, hierarchy, 0, new Point());
+                    }
+                }
+            }
+        }
+        this.lastFrame = rgbFrame;
+        return rgbFrame;
     }
 
     @Override
@@ -142,16 +175,4 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
     }
 
-
-    /**
-     * This method changes the parameter which defines if original video feed should be shown or not.
-     *
-     * @param view from which this method is called
-     */
-    public void changeVideoSettings(View view) {
-        videoStyle++;
-        if(videoStyle > 3){
-            videoStyle = 1;
-        }
-    }
 }
