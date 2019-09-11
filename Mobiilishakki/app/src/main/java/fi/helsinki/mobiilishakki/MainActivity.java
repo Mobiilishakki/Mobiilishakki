@@ -87,15 +87,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
-        // performance boost --> skip frames to cut the load
-        if(this.lastFrame != null){
-            skipCounter++;
-            if(skipCounter > 15) {
-                skipCounter = 0;
-                return lastFrame;
-            }
-        }
-
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
 
