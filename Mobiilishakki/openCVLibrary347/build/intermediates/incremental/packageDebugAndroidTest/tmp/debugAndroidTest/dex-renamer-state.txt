@@ -1,4 +1,0 @@
-#Wed Sep 11 12:13:10 EEST 2019
-base.0=/home/mevid/GitHub/Mobiilishakki/Mobiilishakki/openCVLibrary347/build/intermediates/dex/debugAndroidTest/mergeDexDebugAndroidTest/out/classes.dex
-path.0=classes.dex
-renamed.0=classes.dex
