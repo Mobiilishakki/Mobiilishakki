@@ -16,7 +16,7 @@ android:
   components:
     - tools
     - platform-tools
-    - tools
+    - tools # has to be twice
     - build-tools-$ANDROID_BUILD_TOOLS_VERSION
     - android-$ANDROID_API_LEVEL
     - android-$ANDROID_EMULATOR_LEVEL
@@ -59,6 +59,4 @@ notifications:
   email:
     on_success: never
     on_failure: never
-
-
 
