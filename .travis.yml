@@ -1,12 +1,62 @@
 language: android
-dist: trusty
+jdk: oraclejdk8
+sudo: false
+
+env:
+  global:
+    - ANDROID_API_LEVEL=28
+    - ANDROID_EMULATOR_LEVEL=19
+    - ANDROID_BUILD_TOOLS_VERSION=29.0.2
+    - ADB_INSTALL_TIMEOUT=5 # minutes
+    - ANDROID_ABI=armeabi-v7a
+    - ANDROID_TAG=google_apis
+    - QEMU_AUDIO_DRV=none
+
 android:
   components:
     - tools
     - platform-tools
-    - build-tools-29.0.2
-    - android-28
+    - tools # has to be twice
+    - build-tools-$ANDROID_BUILD_TOOLS_VERSION
+    - android-$ANDROID_API_LEVEL
+    - android-$ANDROID_EMULATOR_LEVEL
+    - extra-android-support
+    - extra-google-m2repository
+    - extra-android-m2repository
+    - sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
+
+licenses:
+  - android-sdk-preview-license-.+
+  - android-sdk-license-.+
+  - google-gdk-license-.+
+
+cache:
+  directories:
+    - "$HOME/.gradle/caches/"
+    - "$HOME/.gradle/wrapper/"
+    - "$HOME/.android/build-cache"
+
+before_install:
+  - mkdir "$ANDROID_HOME/licenses" || true
+  - echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
+  - echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+
+install:
+  - echo y | sdkmanager "ndk-bundle"
+
+before_script:
+  - android list targets
+  - echo no | android create avd --force -n test -t "android-"$ANDROID_EMULATOR_LEVEL --abi $ANDROID_ABI --tag $ANDROID_TAG
+  - emulator -avd test -no-window &
+  - android-wait-for-emulator
+  - adb shell input keyevent 82
 
 script:
   - cd Mobiilishakki
-  - ./gradlew build connectedCheck
+  - ./gradlew connectedCheck -PdisablePreDex --stacktrace
+
+notifications:
+  email:
+    on_success: never
+    on_failure: never
+
