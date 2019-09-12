@@ -7,6 +7,9 @@ New features are developed in their own branches, then merged first to “final 
 Master should always be production-ready.
 Merges are done using pull request, and other team member(s) need to check and accept the merge.
 
+### Informing other members:
+Team members should inform other members if they can't attend to agreed appointments or if they will be late from the meetings.
+
 
 ### Definition of Done:
  * Fulfils the requirement of the user story
