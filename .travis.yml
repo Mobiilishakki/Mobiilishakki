@@ -19,11 +19,11 @@ android:
     - tools # has to be twice
     - build-tools-$ANDROID_BUILD_TOOLS_VERSION
     - android-$ANDROID_API_LEVEL
-    - android-$ANDROID_EMULATOR_LEVEL
+    #- android-$ANDROID_EMULATOR_LEVEL
     - extra-android-support
     - extra-google-m2repository
     - extra-android-m2repository
-    - sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
+    #- sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
 
 licenses:
   - android-sdk-preview-license-.+
@@ -46,14 +46,14 @@ install:
 
 before_script:
   - android list targets
-  - echo no | android create avd --force -n test -t "android-"$ANDROID_EMULATOR_LEVEL --abi $ANDROID_ABI --tag $ANDROID_TAG
-  - emulator -avd test -no-window &
-  - android-wait-for-emulator
-  - adb shell input keyevent 82
+  #- echo no | android create avd --force -n test -t "android-"$ANDROID_EMULATOR_LEVEL --abi $ANDROID_ABI --tag $ANDROID_TAG
+  #- emulator -avd test -no-window &
+  #- android-wait-for-emulator
+  #- adb shell input keyevent 82
 
 script:
   - cd Mobiilishakki
-  - ./gradlew connectedCheck -PdisablePreDex --stacktrace
+  - ./gradlew test  # only unit tests --> emulator tests too slow to run
 
 notifications:
   email:
