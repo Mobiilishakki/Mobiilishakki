@@ -19,11 +19,11 @@ android:
     - tools # has to be twice
     - build-tools-$ANDROID_BUILD_TOOLS_VERSION
     - android-$ANDROID_API_LEVEL
-    - android-$ANDROID_EMULATOR_LEVEL
+    #- android-$ANDROID_EMULATOR_LEVEL
     - extra-android-support
     - extra-google-m2repository
     - extra-android-m2repository
-    - sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
+    #- sys-img-$ANDROID_ABI-google_apis-$ANDROID_EMULATOR_LEVEL
 
 licenses:
   - android-sdk-preview-license-.+
