@@ -13,18 +13,25 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.core.*;
+
+import org.opencv.calib3d.Calib3d.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.opencv.core.Core.BORDER_DEFAULT;
+import static org.opencv.core.CvType.CV_8UC3;
 import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
 import static org.opencv.imgproc.Imgproc.COLOR_BGR2GRAY;
+import static org.opencv.imgproc.Imgproc.GaussianBlur;
 import static org.opencv.imgproc.Imgproc.LINE_8;
 import static org.opencv.imgproc.Imgproc.RETR_TREE;
 import static org.opencv.imgproc.Imgproc.approxPolyDP;
@@ -90,11 +97,22 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
 
+        GaussianBlur(rgbFrame, rgbFrame, new Size(5, 5), BORDER_DEFAULT);
+
         // Mat object for holding gray frame
         Mat grayFrame = new Mat();
         Imgproc.cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
         // Mat object for holding the result of edge detection (Canny)
         Mat edges = new Mat();
+
+        //int size = (int)grayFrame.total() * grayFrame.channels();
+        //byte[] array = new byte[size];
+
+        //InputArray arrayy = new InputArray();
+        //grayFrame.get(0, 0, array);
+
+        //Calib3d.findChessboardCorners(array);
+
         Imgproc.Canny(grayFrame, edges, 50, 150, 3, false);
 
         // Find contours from the frame
@@ -108,8 +126,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             return rgbFrame;
         }
 
+        drawContours(rgbFrame, contours, -1, new Scalar(255, 0, 0), 1, 8, hierarchy);
+
         // for each contour found
-        for (int i = 0; i < contours.size(); i++){
+        /*for (int i = 0; i < contours.size(); i++){
 
             MatOfPoint2f contour2f = new MatOfPoint2f(contours.get(i).toArray());
             double approxDistance = arcLength(contour2f, true) * 0.02;
@@ -133,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     }
                 }
             }
-        }
+        }*/
         this.lastFrame = rgbFrame;
         return rgbFrame;
     }
