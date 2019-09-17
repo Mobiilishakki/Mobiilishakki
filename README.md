@@ -14,7 +14,11 @@ Aihe liittyy shakin pelaajakunnan laajentamiseen, siten että digitaalisen shaki
 # Contributors
 
 [Juha Paljakka] (https://github.com/jpaljakk)
+
 [Martin Vidjeskog] (https://github.com/mevid93)
+
 [Niko ] (https://github.com/nakkekakke)
+
 [Adiel Lindroos] (https://github.com/ALindroos)
+
 [Carl-Philip Ehrnrooth]
