@@ -9,3 +9,12 @@ Aihe liittyy shakin pelaajakunnan laajentamiseen, siten että digitaalisen shaki
 
 
 [Backlog](https://docs.google.com/spreadsheets/d/1zG-0s1h2mIXxn2nuR7uvuNg6FT7avz7rtKZj1EuxpaE/edit#gid=1)
+
+
+# Contributors
+
+[Juha Paljakka] (https://github.com/jpaljakk)
+[Martin Vidjeskog] (https://github.com/mevid93)
+[Niko ] (https://github.com/nakkekakke)
+[Adiel Lindroos] (https://github.com/ALindroos)
+[Carl-Philip Ehrnrooth]
