@@ -13,16 +13,10 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
 import org.opencv.core.*;
-
-import org.opencv.calib3d.Calib3d.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +29,7 @@ import static org.opencv.imgproc.Imgproc.Canny;
 import static org.opencv.imgproc.Imgproc.GaussianBlur;
 import static org.opencv.imgproc.Imgproc.HoughLines;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
+import static org.opencv.imgproc.Imgproc.circle;
 import static org.opencv.imgproc.Imgproc.cvtColor;
 import static org.opencv.imgproc.Imgproc.line;
 import static org.opencv.imgproc.Imgproc.threshold;
@@ -95,8 +90,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
+
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
+
+        frameHeight = rgbFrame.rows();
+        frameWidth = rgbFrame.cols();
+
 
         rgbFrame = recogniseBoardGrid(rgbFrame);
 
@@ -113,13 +113,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Mat grayFrame = new Mat();
         cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
 
+        // Blurring the image to reduce the amount of "false positives"
+        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
+
         Mat binaryMat = new Mat(grayFrame.size(), grayFrame.type());
 
         // Apply thresholding
         threshold(grayFrame, binaryMat, 100, 255, THRESH_BINARY);
-
-        // Blurring the image to reduce the amount of "false positives"
-        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
 
         // Mat object for holding the result of edge detection (Canny)
         Mat edges = new Mat();
@@ -160,6 +160,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // Draw lines to video feed
         drawLinesToMat(lines, rgbFrame);
+
+        // Draw intersection points to video feed
+        findAndDrawIntersectionPoints(lines, rgbFrame);
 
         return rgbFrame;
     }
@@ -262,6 +265,53 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return linegroups;
     }
 
+    /**
+     * Finds the intersection points for lines, then draws them on the Mat object
+     */
+    private static void findAndDrawIntersectionPoints(List<Line> lines, Mat rgbFrame) {
+        // Create lists for vertical and horizontal lines
+        List<Line> vertical = new ArrayList<>();
+        List<Line> horizontal = new ArrayList<>();
+        // Iterate through all lines and group them to horizontal and vertical lines
+        for(Line line : lines) {
+            if(line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
+                vertical.add(line);     // line angle closer to vertical
+            }else {
+                horizontal.add(line);   // line angle closer to horizontal
+            }
+        }
+
+        for (Line verticalLine : vertical) {
+            for (Line horizontalLine : horizontal) {
+                if (linesIntersect(verticalLine, horizontalLine)) {
+                    // Horizontal line calculation
+                    double a0 = Math.cos(horizontalLine.getTheta()), b0 = Math.sin(horizontalLine.getTheta());
+                    double x0h = a0 * horizontalLine.getRho(), y0h = b0 * horizontalLine.getRho();
+                    double x1 = x0h + 3000*(-1 * b0);
+                    double y1 = y0h + 3000*a0;
+                    double x2 = x0h - 3000*(-1 * b0);
+                    double y2 = y0h - 3000*a0;
+
+                    // Vertical line calculation
+                    double a1 = Math.cos(verticalLine.getTheta()), b1 = Math.sin(verticalLine.getTheta());
+                    double x0v = a1 * verticalLine.getRho(), y0v = b1 * verticalLine.getRho();
+                    double x3 = x0v + 3000*(-1 * b1);
+                    double y3 = y0v + 3000*a1;
+                    double x4 = x0v - 3000*(-1 * b1);
+                    double y4 = y0v - 3000*a1;
+
+                    // Intersection point calculation
+                    double u = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+                    int x = (int) (x1 + u * (x2 - x1));
+                    int y = (int) (y1 + u * (y2 - y1));
+                    Point intersection = new Point(x, y);
+
+
+                    circle(rgbFrame, intersection, 8, new Scalar(255, 0, 0));
+                }
+            }
+        }
+    }
 
     /**
      * Filter lines that are not part of the chessboard grid.
@@ -287,7 +337,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // TODO: remove extra lines.
         //  9 most centered lines should be considered as actual grid lines
 
-        // TODO: merge horizontal and vertical lines to
+        // Merge horizontal and vertical lines
+        lines = vertical;
+        lines.addAll(horizontal);
         return lines;
     }
 
@@ -296,32 +348,40 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
      */
     private static List<Line> removeIntersectingLines(List<Line> lines, boolean isVertical) {
         // Array where deleted lines are marked
-        boolean[] deletedLines = new boolean[lines.size()];
+        boolean[] linesToRemove = new boolean[lines.size()];
         // Iterate through all combinations
         for (int i = 0; i < lines.size(); i++) {
-            if (deletedLines[i] == true) {
+            if (linesToRemove[i] == true) {
                 continue;
             }
             for (int j = 0; j < lines.size(); j++) {
-                if (i == j || deletedLines[j] == true || deletedLines[i] == true) {
+                if (i == j || linesToRemove[j] == true || linesToRemove[i] == true) {
                     continue;
                 }
                 // Check if lines intersect
                 Line lineI = lines.get(i);
                 Line lineJ = lines.get(j);
                 if (linesIntersect(lineI, lineJ)) {
-                    // Remove the one that is less optimal
-                    double deltaI = Double.MAX_VALUE;
-                    double deltaJ = Double.MAX_VALUE;
+                    double deltaI, deltaJ;
                     if (isVertical) {
-
+                        deltaI = Math.abs(Math.PI / 2 - lineI.getTheta());
+                        deltaJ = Math.abs(Math.PI / 2 - lineJ.getTheta());
                     } else {
-
+                        if (lineI.getTheta() <= Math.PI / 4) {
+                            deltaI = Math.abs(Math.PI / 4 - lineI.getTheta());
+                        } else {
+                            deltaI = Math.abs(Math.PI - lineI.getTheta());
+                        }
+                        if (lineJ.getTheta() <= Math.PI / 4) {
+                            deltaJ = Math.abs(Math.PI / 4 - lineJ.getTheta());
+                        } else {
+                            deltaJ = Math.abs(Math.PI - lineJ.getTheta());
+                        }
                     }
                     if (deltaI > deltaJ) {
-                        deletedLines[i] = true;
+                        linesToRemove[i] = true;
                     } else {
-                        deletedLines[j] = true;
+                        linesToRemove[j] = true;
                     }
                 }
             }
@@ -362,6 +422,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         if (x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
             return true;
         }
+        
         return false;
     }
 
