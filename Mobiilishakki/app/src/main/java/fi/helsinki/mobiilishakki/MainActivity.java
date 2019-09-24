@@ -48,6 +48,7 @@ import static org.opencv.imgproc.Imgproc.RETR_TREE;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
 import static org.opencv.imgproc.Imgproc.approxPolyDP;
 import static org.opencv.imgproc.Imgproc.arcLength;
+import static org.opencv.imgproc.Imgproc.circle;
 import static org.opencv.imgproc.Imgproc.contourArea;
 import static org.opencv.imgproc.Imgproc.cornerSubPix;
 import static org.opencv.imgproc.Imgproc.cvtColor;
@@ -114,8 +115,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
+
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
+
+        frameHeight = rgbFrame.rows();
+        frameWidth = rgbFrame.cols();
+
 
         rgbFrame = recogniseBoardGrid(rgbFrame);
 
@@ -132,13 +138,13 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Mat grayFrame = new Mat();
         cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
 
+        // Blurring the image to reduce the amount of "false positives"
+        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
+
         Mat binaryMat = new Mat(grayFrame.size(), grayFrame.type());
 
         //Apply thresholding
         threshold(grayFrame, binaryMat, 100, 255, THRESH_BINARY);
-
-        // Blurring the image to reduce the amount of "false positives"
-        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
 
         // Mat object for holding the result of edge detection (Canny)
         Mat edges = new Mat();
@@ -179,6 +185,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // Draw lines to video feed
         drawLinesToMat(lines, rgbFrame);
+
+        // Draw intersection points to video feed
+        findAndDrawIntersectionPoints(lines, rgbFrame);
 
         return rgbFrame;
     }
@@ -281,6 +290,54 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
         // Return linegroups
         return linegroups;
+    }
+
+    /**
+     * Finds the intersection points for lines, then draws them on the Mat object
+     */
+    private static void findAndDrawIntersectionPoints(List<Line> lines, Mat rgbFrame) {
+        // Create lists for vertical and horizontal lines
+        List<Line> vertical = new ArrayList<>();
+        List<Line> horizontal = new ArrayList<>();
+        // Iterate through all lines and group them to horizontal and vertical lines
+        for(Line line : lines) {
+            if(line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
+                vertical.add(line);     // line angle closer to vertical
+            }else {
+                horizontal.add(line);   // line angle closer to horizontal
+            }
+        }
+
+        for (Line verticalLine : vertical) {
+            for (Line horizontalLine : horizontal) {
+                if (linesIntersect(verticalLine, horizontalLine)) {
+                    // Horizontal line calculation
+                    double a0 = Math.cos(horizontalLine.getTheta()), b0 = Math.sin(horizontalLine.getTheta());
+                    double x0h = a0 * horizontalLine.getRho(), y0h = b0 * horizontalLine.getRho();
+                    double x1 = x0h + 3000*(-1 * b0);
+                    double y1 = y0h + 3000*a0;
+                    double x2 = x0h - 3000*(-1 * b0);
+                    double y2 = y0h - 3000*a0;
+
+                    // Vertical line calculation
+                    double a1 = Math.cos(verticalLine.getTheta()), b1 = Math.sin(verticalLine.getTheta());
+                    double x0v = a1 * verticalLine.getRho(), y0v = b1 * verticalLine.getRho();
+                    double x3 = x0v + 3000*(-1 * b1);
+                    double y3 = y0v + 3000*a1;
+                    double x4 = x0v - 3000*(-1 * b1);
+                    double y4 = y0v - 3000*a1;
+
+                    // Intersection point calculation
+                    double u = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+                    int x = (int) (x1 + u * (x2 - x1));
+                    int y = (int) (y1 + u * (y2 - y1));
+                    Point intersection = new Point(x, y);
+
+
+                    circle(rgbFrame, intersection, 8, new Scalar(255, 0, 0));
+                }
+            }
+        }
     }
 
     /**
@@ -391,6 +448,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // if determinant is zero --> lines do not intersect
         if(determinant == 0) {
+            System.out.println("DETERMINANT 0");
             return false;
         }
 
@@ -398,8 +456,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         double y = (a1*c2 - a2*c1)/determinant;
 
         if(x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
+            System.out.println("INTERSECTION IN RANGE");
             return true;
         }
+        System.out.println("INTERSECTION OUT OF RANGE");
         return false;
     }
 
