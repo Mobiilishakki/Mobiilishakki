@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.SeekBar;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -39,7 +41,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private static int frameWidth = 0;
     private static int frameHeight = 0;
-
+    SeekBar customSeekBar;
+    SeekBar customSeekBar2;
     // Latest frame that was processed
     private Mat lastFrame;
     // Used for logging success or failure messages
@@ -74,7 +77,43 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
         cameraBridgeViewBase.setCvCameraViewListener(this);
         cameraBridgeViewBase.enableFpsMeter();
+        customSeekBar = (SeekBar) findViewById(R.id.simpleSeekBar); // initiate the Seek bar
+        customSeekBar2 = (SeekBar) findViewById(R.id.simpleSeekBar2); // initiate the Seek bar
 
+        // perform seek bar change listener event used for getting the progress value
+
+        customSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            double progressChangedValue = 1;
+
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                progressChangedValue = ((double)progress)/50;
+            }
+
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // TODO Auto-generated method stub
+            }
+
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                Toast.makeText(MainActivity.this, "Houghlines rho THRESHOLD IS : " + progressChangedValue,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        customSeekBar2.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            double progressChangedValue = Math.PI / 180;
+
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                progressChangedValue = (Math.PI/9000)*progress;
+            }
+
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // TODO Auto-generated method stub
+            }
+
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                Toast.makeText(MainActivity.this, "Houghlines theta THRESHOLD IS : :" + progressChangedValue,
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -108,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     /**
      * Try to recognise grid from frame and write grid lines to picture.
      */
-    private static Mat recogniseBoardGrid(Mat rgbFrame) {
+    private  Mat recogniseBoardGrid(Mat rgbFrame) {
         // Mat object for holding gray frame
         Mat grayFrame = new Mat();
         cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
@@ -127,6 +166,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // Apply line detection
         Mat linesMat = new Mat();
+        double arvo = customSeekBar.getProgress();
+        double arvo2 = customSeekBar2.getProgress();
         HoughLines(edges, linesMat, 1, Math.PI / 180, 150);
 
         // Skip if no lines found

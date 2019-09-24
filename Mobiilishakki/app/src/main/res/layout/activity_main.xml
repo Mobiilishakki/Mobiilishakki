@@ -22,6 +22,27 @@
             android:layout_height="match_parent"
             android:layout_gravity="center_horizontal"/>
 
+        <SeekBar
+            android:id="@+id/simpleSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="103dp"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="0dp"
+            android:max="100"
+            android:progress="50"
+            android:visibility="visible" />
+
+        <SeekBar
+            android:id="@+id/simpleSeekBar2"
+            android:layout_width="match_parent"
+            android:layout_height="103dp"
+            android:layout_below="@id/simpleSeekBar"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="0dp"
+            android:max="100"
+            android:progress="50"
+            android:visibility="visible" />
+
     </RelativeLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
