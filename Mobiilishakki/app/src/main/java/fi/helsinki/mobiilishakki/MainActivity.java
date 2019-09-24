@@ -117,6 +117,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Mat object for holding rgb frame
         Mat rgbFrame = inputFrame.rgba();
 
+        rgbFrame = recogniseBoardGrid(rgbFrame);
+
+        this.lastFrame = rgbFrame;
+        return rgbFrame;
+    }
+
+
+    /**
+     * Try to recognise grid from frame and write grid lines to picture.
+     */
+    private static Mat recogniseBoardGrid(Mat rgbFrame) {
         // Mat object for holding gray frame
         Mat grayFrame = new Mat();
         cvtColor(rgbFrame, grayFrame, COLOR_BGR2GRAY);
@@ -139,7 +150,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // Skip if no lines found
         if (linesMat.empty()) {
-            this.lastFrame = rgbFrame;
             return rgbFrame;
         }
 
@@ -170,77 +180,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Draw lines to video feed
         drawLinesToMat(lines, rgbFrame);
 
-        this.lastFrame = rgbFrame;
         return rgbFrame;
-    }
-
-
-    /**
-     * Try to recognise grid from frame and write grid lines to picture.
-     */
-    private static Mat recogniseBoardGrid(Mat frame) {
-        // Update frame size information to variables
-        frameWidth = frame.width();
-        frameHeight = frame.height();
-
-        // Mat object for holding the new binary image
-        Mat gray = new Mat();
-        cvtColor(frame, gray, COLOR_BGR2GRAY);
-
-        // Blur the frame
-        GaussianBlur(gray, gray, new Size(3, 3), BORDER_DEFAULT);
-
-        // Mat object for holding the result of edge detection (Canny)
-        Mat edges = new Mat();
-        Canny(gray, edges, 50, 150, 3, false);
-
-        // Apply line detection
-        Mat linesMat = new Mat();
-        HoughLines(edges, linesMat, 1, Math.PI / 180, 150);
-
-        if (linesMat.empty()) {
-            return null;
-        }
-
-        // Get lines in a list
-        List<Line> lines = getLinesList(linesMat);
-        // Get linegroups
-        List<Linegroup> linegroups = getLinegroups(lines);
-        // Get merged lines
-        List<Line> mergedLines = mergeLines(linegroups);
-
-        // Keep merging lines until stable situation
-        while (lines.size() != mergedLines.size()) {
-            lines = mergedLines;
-            // Get linegroups
-            linegroups = getLinegroups(lines);
-            // Get merged lines
-            mergedLines = mergeLines(linegroups);
-        }
-
-        // Filter lines that are not part of main chessboard grid
-        lines = filterRedundantLines(mergedLines);
-
-        // Check if we right amount of lines to form chessboard
-        if (mergedLines.size() == 18) {
-            System.out.println("Could be a board!!!");
-        }
-
-        // Draw lines to frame
-        Mat grid = Mat.zeros(edges.size(), CV_8UC3);
-        grid = drawLinesToMat(mergedLines, grid);
-
-        // Detect contours from grid
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        cvtColor(grid, grid, COLOR_BGR2GRAY);
-        findContours(grid, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
-
-        //Mat res = Mat.zeros(edges.size(), CV_8UC1);
-        drawContours(gray, contours, -1, new Scalar(255, 0, 0), 1, LINE_AA);
-
-        // Return the modified frame where the redundant lines are filtered
-        return gray;
     }
 
     /**
