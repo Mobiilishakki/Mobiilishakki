@@ -25,35 +25,17 @@ import org.opencv.core.*;
 import org.opencv.calib3d.Calib3d.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 
-import static org.opencv.calib3d.Calib3d.CALIB_CB_ADAPTIVE_THRESH;
-import static org.opencv.calib3d.Calib3d.CALIB_CB_FAST_CHECK;
-import static org.opencv.calib3d.Calib3d.CALIB_CB_NORMALIZE_IMAGE;
-import static org.opencv.calib3d.Calib3d.drawChessboardCorners;
-import static org.opencv.calib3d.Calib3d.findChessboardCorners;
 import static org.opencv.core.Core.BORDER_DEFAULT;
 import static org.opencv.core.Core.LINE_AA;
-import static org.opencv.core.CvType.CV_8UC3;
-import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
 import static org.opencv.imgproc.Imgproc.COLOR_BGR2GRAY;
 import static org.opencv.imgproc.Imgproc.Canny;
 import static org.opencv.imgproc.Imgproc.GaussianBlur;
 import static org.opencv.imgproc.Imgproc.HoughLines;
-import static org.opencv.imgproc.Imgproc.LINE_8;
-import static org.opencv.imgproc.Imgproc.RETR_TREE;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
-import static org.opencv.imgproc.Imgproc.approxPolyDP;
-import static org.opencv.imgproc.Imgproc.arcLength;
-import static org.opencv.imgproc.Imgproc.contourArea;
-import static org.opencv.imgproc.Imgproc.cornerSubPix;
 import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.drawContours;
-import static org.opencv.imgproc.Imgproc.findContours;
-import static org.opencv.imgproc.Imgproc.isContourConvex;
 import static org.opencv.imgproc.Imgproc.line;
 import static org.opencv.imgproc.Imgproc.threshold;
 
@@ -73,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
-            switch(status){
+            switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                     Log.i(TAG, "OpenCV loaded successfully");
                     cameraBridgeViewBase.enableView();
@@ -84,7 +66,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
     };
-    private int skipCounter = 0;
 
 
     @Override
@@ -134,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         Mat binaryMat = new Mat(grayFrame.size(), grayFrame.type());
 
-        //Apply thresholding
+        // Apply thresholding
         threshold(grayFrame, binaryMat, 100, 255, THRESH_BINARY);
 
         // Blurring the image to reduce the amount of "false positives"
@@ -188,10 +169,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
      */
     private static Mat drawLinesToMat(List<Line> mergedLines, Mat frame) {
         for (Line line : mergedLines) {
-            double a = Math.cos(line.getTheta()), b = Math.sin(line.getTheta());
-            double x0 = a * line.getRho(), y0 = b * line.getRho();
-            Point pt1 = new Point(Math.round(x0 + 10000 * (-b)), Math.round(y0 + 10000 * (a)));
-            Point pt2 = new Point(Math.round(x0 - 10000 * (-b)), Math.round(y0 - 10000 * (a)));
+            Point pt1 = line.getStartingPoint();
+            Point pt2 = line.getEndingPoint();
             line(frame, pt1, pt2, new Scalar(0, 0, 255), 1, LINE_AA, 0);
         }
         return frame;
@@ -283,23 +262,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return linegroups;
     }
 
-    /**
-     * Transform Mat-object tot BufferedImage-object.
-     */
-/*    private static BufferedImage Mat2BufferedImage(Mat m) {
-        //Method converts a Mat to a Buffered Image
-        int type = BufferedImage.TYPE_BYTE_GRAY;
-        if (m.channels() > 1) {
-            type = BufferedImage.TYPE_3BYTE_BGR;
-        }
-        int bufferSize = m.channels() * m.cols() * m.rows();
-        byte[] b = new byte[bufferSize];
-        m.get(0, 0, b); // get all the pixels
-        BufferedImage image = new BufferedImage(m.cols(), m.rows(), type);
-        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-        System.arraycopy(b, 0, targetPixels, 0, b.length);
-        return image;
-    }*/
 
     /**
      * Filter lines that are not part of the chessboard grid.
@@ -310,15 +272,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         List<Line> vertical = new ArrayList<>();
         List<Line> horizontal = new ArrayList<>();
         // Iterate through all lines and group them to horizontal and vertical lines
-        for(Line line : lines) {
-            if(line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
+        for (Line line : lines) {
+            if (line.getTheta() >= Math.PI / 4 && line.getTheta() <= Math.PI / 4 * 3) {
                 vertical.add(line);     // line angle closer to vertical
-            }else {
+            } else {
                 horizontal.add(line);   // line angle closer to horizontal
             }
         }
 
-        // TODO: remove lines that overlap in frame area
+        
         vertical = removeIntersectingLines(vertical, true);
         horizontal = removeIntersectingLines(horizontal, false);
 
@@ -336,29 +298,29 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Array where deleted lines are marked
         boolean[] deletedLines = new boolean[lines.size()];
         // Iterate through all combinations
-        for(int i = 0; i < lines.size(); i++) {
-            if(deletedLines[i] == true) {
+        for (int i = 0; i < lines.size(); i++) {
+            if (deletedLines[i] == true) {
                 continue;
             }
-            for(int j = 0; j < lines.size(); j++) {
-                if(i == j || deletedLines[j] == true ||deletedLines[i] == true) {
+            for (int j = 0; j < lines.size(); j++) {
+                if (i == j || deletedLines[j] == true || deletedLines[i] == true) {
                     continue;
                 }
                 // Check if lines intersect
                 Line lineI = lines.get(i);
                 Line lineJ = lines.get(j);
-                if(linesIntersect(lineI, lineJ)) {
+                if (linesIntersect(lineI, lineJ)) {
                     // Remove the one that is less optimal
                     double deltaI = Double.MAX_VALUE;
                     double deltaJ = Double.MAX_VALUE;
-                    if(isVertical) {
+                    if (isVertical) {
 
-                    }else{
+                    } else {
 
                     }
-                    if(deltaI > deltaJ) {
+                    if (deltaI > deltaJ) {
                         deletedLines[i] = true;
-                    }else {
+                    } else {
                         deletedLines[j] = true;
                     }
                 }
@@ -390,14 +352,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         double determinant = a1 * b2 - a2 * b1;
 
         // if determinant is zero --> lines do not intersect
-        if(determinant == 0) {
+        if (determinant == 0) {
             return false;
         }
 
-        double x = (b2*c1 - b1*c2)/determinant;
-        double y = (a1*c2 - a2*c1)/determinant;
+        double x = (b2 * c1 - b1 * c2) / determinant;
+        double y = (a1 * c2 - a2 * c1) / determinant;
 
-        if(x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
+        if (x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
             return true;
         }
         return false;
@@ -407,10 +369,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     protected void onResume() {
         super.onResume();
-        if(!OpenCVLoader.initDebug()){
+        if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this, mLoaderCallback);
-        }else{
+        } else {
             Log.d(TAG, "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
