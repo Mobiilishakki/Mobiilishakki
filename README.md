@@ -1,4 +1,6 @@
-# Mobiilishakki [![Build Status](https://travis-ci.org/Mobiilishakki/Mobiilishakki.svg?branch=master)](https://travis-ci.org/Mobiilishakki/Mobiilishakki)
+# Mobiilishakki 
+[![Build Status](https://travis-ci.org/Mobiilishakki/Mobiilishakki.svg?branch=master)](https://travis-ci.org/Mobiilishakki/Mobiilishakki)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Mobiilishakki/Mobiilishakki/blob/master/LICENSE)
 
 Tarkoituksena toteuttaaa konenäköön perustuva sovellus, jonka avulla kaksi ihmispelaajaa voivat pelata shakkia fyysisellä laudalla vaikka eivät ole samassa tilassa. Tämä vaatii konenäköratkaisun, joka tunnistaa (kännykkä)kameran kuvavirrasta shakkilaudan, sekä laudalla olevan tilanteen ja siirron. Peli etenee, kun havaittu siirto toimitetaan verkon yli toisella pelaajalle, joka sitten suorittaa fyysisen siirron omalla laudallaan. Yksittäisen pelin kulku tulee tallentaa tietokantaan mahdollistaen pelin myöhemmän esittämisen sekä koneanalyysin. Aihe ei vaadi konenäöstä aiempaa erityistietämystä, sillä toteutuksessa voidaan hyödyntää valmiita vapaan lähdekoodin konenäkökirjastoja (esim. OpenCV - https://opencv.org/). Tunnistuksessa voidaan lähteä oletuksesta, että kamera on mahdollisimman optimaalisesti aseteltu tunnistamista varten.
 
@@ -20,5 +22,3 @@ Aihe liittyy shakin pelaajakunnan laajentamiseen, siten että digitaalisen shaki
 [Niko Juntunen](https://github.com/nakkekakke)
 
 [Adiel Lindroos](https://github.com/ALindroos)
-
-[Carl-Philip Ehrnrooth]
