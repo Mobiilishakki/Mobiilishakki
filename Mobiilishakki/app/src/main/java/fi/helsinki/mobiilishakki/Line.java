@@ -38,22 +38,6 @@ public class Line {
     }
 
     /**
-     * Get slope m of the line. Line function is y = m*x + c
-     * @return m
-     */
-    public double getSlope() {
-        return -Math.cos(theta)/Math.sin(theta);
-    }
-
-    /**
-     * Get constant c from line function y = m*x + c.
-     * @return c
-     */
-    public double getConstant() {
-        return rho/Math.sin(theta);
-    }
-
-    /**
      * Get line starting point.
      * @return point
      */
