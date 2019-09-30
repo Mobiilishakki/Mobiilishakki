@@ -21,4 +21,4 @@ Aihe liittyy shakin pelaajakunnan laajentamiseen, siten että digitaalisen shaki
 
 [Niko Juntunen](https://github.com/nakkekakke)
 
-[Adiel Lindroos](https://github.com/ALindroos)
+[A. Lindroos](https://github.com/ALindroos)
