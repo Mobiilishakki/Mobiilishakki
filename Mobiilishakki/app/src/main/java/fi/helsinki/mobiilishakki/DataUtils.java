@@ -11,9 +11,9 @@ import org.opencv.core.Mat;
 
 import java.io.ByteArrayOutputStream;
 
-public class Utils {
+public class DataUtils {
 
-    private static final String TAG = "Utils";    // Debug tag string
+    private static final String TAG = "DataUtils";    // Debug tag string
 
     /**
      * Convert byte array to openCV Mat object.

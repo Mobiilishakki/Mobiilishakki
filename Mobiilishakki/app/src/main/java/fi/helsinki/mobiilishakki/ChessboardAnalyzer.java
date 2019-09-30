@@ -59,7 +59,7 @@ public class ChessboardAnalyzer implements Runnable {
      */
     private boolean detectBoard() {
         // Create Mat-object from bytes
-        Mat frame = fi.helsinki.mobiilishakki.Utils.bytesToMatConversion(bytes, cameraParams);
+        Mat frame = DataUtils.bytesToMatConversion(bytes, cameraParams);
         frameWidth = frame.cols();
         frameHeight = frame.rows();
         // Mat-object for holding gray frame

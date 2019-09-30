@@ -88,7 +88,6 @@ public class MainActivity extends AppCompatActivity implements Camera.PreviewCal
         if (ocvThread == null || ocvThread.isAlive() == false) {
             Bitmap bitmap = cbAnalyzer.getFrameInBitmap();
             if (bitmap != null) {
-                Log.i(TAG, "OK");
                 imageView.setImageBitmap(bitmap);
             }
             // Update frame data to chessboard analyzer
