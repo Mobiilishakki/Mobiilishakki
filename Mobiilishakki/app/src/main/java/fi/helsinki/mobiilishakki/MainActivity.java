@@ -158,13 +158,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Filter lines that are not part of main chessboard grid
         lines = filterRedundantLines(mergedLines);
 
-        if (!correctLines) {
-            return rgbFrame;
-        }
-
         // Check if we have right amount of lines to form chessboard
-        if (lines.size() != 18) {
-            System.out.println("Not a board!!!");
+        if (!correctLines) {
             return rgbFrame;
         }
 
@@ -174,49 +169,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Draw intersection points to video feed
         List<Point> intersectionPoints = findAndDrawIntersectionPoints(lines, rgbFrame);
 
-        List<Point> orderedPoints = intersectionPoints;
 
-        for (int i = 0; i < orderedPoints.size() - 1; i++) {
-            for (int j = 0 ; j < orderedPoints.size() - i - 1; j++) {
-                if (orderedPoints.get(j).y > orderedPoints.get(j + 1).y) {
-                    Point p = orderedPoints.get(j);
-                    orderedPoints.set(j, orderedPoints.get(j + 1));
-                    orderedPoints.set(j + 1, p);
-                }
-            }
+        // Get chess squares from the intersection points
+        List<ChessSquare> squares = getChessSquares(intersectionPoints, rgbFrame);
+
+        for (Point pt : squares.get(0).getPoints()) {
+            circle(rgbFrame, pt, 5, new Scalar(255, 0, 0), 5);
         }
 
-        //System.out.println(orderedPoints.toString());
-
-        for (int i = 0; i < 9; i++) {
-            circle(rgbFrame, orderedPoints.get(i), 12, new Scalar(0, 255, 0));
+        for (Point pt : squares.get(squares.size() - 1).getPoints()) {
+            circle(rgbFrame, pt, 5, new Scalar(255, 0, 0), 5);
         }
-
-       /* int minx = Integer.MAX_VALUE;
-        int miny = Integer.MAX_VALUE;
-        if (!intersectionPoints.isEmpty()) {
-            minx = (int) intersectionPoints.get(0).x;
-            miny = (int) intersectionPoints.get(0).y;
-            intersectionPoints.remove(0);
-        }
-        for (Point point1 : intersectionPoints) {
-            for (Point point : intersectionPoints) {
-                System.out.println(point.toString());
-                if (point.x + point.y < minx + miny) {
-                    minx = (int) point.x;
-                    miny = (int) point.y;
-                    intersectionPoints.remove(point);
-                }
-            }
-
-            if (minx < Integer.MAX_VALUE) {
-                System.out.println("SMALLEST: " + new Point(minx, miny).toString());
-                circle(rgbFrame, new Point(minx, miny) , 15, new Scalar(0, 255, 0));
-            }
-        }*/
-
-
-
 
         return rgbFrame;
     }
@@ -318,6 +281,73 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
         // Return linegroups
         return linegroups;
+    }
+
+    /**
+     * Creates chess squares from corner points
+     */
+    private static List<ChessSquare> getChessSquares(List<Point> pointList, Mat rgbFrame) {
+        // Order all intersection points by their y coordinate
+        for (int i = 0; i < pointList.size() - 1; i++) {
+            for (int j = 0 ; j < pointList.size() - i - 1; j++) {
+                if (pointList.get(j).y > pointList.get(j + 1).y) {
+                    Point p = pointList.get(j);
+                    pointList.set(j, pointList.get(j + 1));
+                    pointList.set(j + 1, p);
+                }
+            }
+        }
+
+        // Order individual intersection point rows by their x coordinate
+        for (int i = 0; i < 9; i++) {
+            Point[] pointArray = new Point[9];
+            for (int j = 0; j < 9; j++) {
+                pointArray[j] = pointList.get((i * 9) + (j));
+            }
+            for (int j = 0; j < 9; j++) {
+                for (int k = 0; k < 9 - 1; k++) {
+                    if (pointArray[k].x > pointArray[k + 1].x) {
+                        Point p = pointArray[k];
+                        pointArray[k] = pointArray[k + 1];
+                        pointArray[k + 1] = p;
+                    }
+                }
+            }
+
+            for (int j = 0; j < 9; j++) {
+                pointList.set((i * 9) + (j), pointArray[j]);
+            }
+
+        }
+
+        //System.out.println(orderedPoints.toString());
+
+        List<ChessSquare> squares = new ArrayList<>();
+        List<List<Point>> squarePoints = new ArrayList<>();
+
+
+        for (int i = 0; i < 64; i++) {
+            squarePoints.add(new ArrayList<Point>());
+        }
+
+        int row = 0;
+
+        for (int i = 0; i < pointList.size() - 9; i++) {
+            if (i % 9 != 8) {
+                squarePoints.get(i - row).add(pointList.get(i));
+                squarePoints.get(i - row).add(pointList.get(i + 9));
+                squarePoints.get(i - row).add(pointList.get(i + 1));
+                squarePoints.get(i - row).add(pointList.get(i + 9 + 1));
+            } else {
+                row++;
+            }
+        }
+
+        for (int i = 0; i < squarePoints.size(); i++) {
+            squares.add(new ChessSquare(squarePoints.get(i)));
+        }
+
+        return squares;
     }
 
     /**
