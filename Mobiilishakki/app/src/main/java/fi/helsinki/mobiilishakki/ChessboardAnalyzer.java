@@ -80,7 +80,7 @@ public class ChessboardAnalyzer implements Runnable {
         //if (!boardDetected || lines.size() != 18) {
         //    return false;
         //}
-        
+
         // Draw lines to frame image
         bitmap = createBitmapFromLines(filteredLines, frameHeight, frameWidth);
 
@@ -126,7 +126,7 @@ public class ChessboardAnalyzer implements Runnable {
 
         for (Line verticalLine : vertical) {
             for (Line horizontalLine : horizontal) {
-                if (linesIntersect(verticalLine, horizontalLine)) {
+                if (linesIntersectInArea(verticalLine, horizontalLine, frameWidth, frameHeight)) {
                     Point intersection = findIntersectionPoint(verticalLine, horizontalLine);
                     intersectionPoints.add(intersection);
                     circle(rgbFrame, intersection, 8, new Scalar(255, 0, 0));
@@ -224,7 +224,7 @@ public class ChessboardAnalyzer implements Runnable {
                 // Check if lines intersect
                 Line lineI = lines.get(i);
                 Line lineJ = lines.get(j);
-                if (linesIntersect(lineI, lineJ)) {
+                if (linesIntersectInArea(lineI, lineJ, frameWidth, frameHeight)) {
                     double deltaI, deltaJ;
                     if (!isVertical) {
                         deltaI = Math.abs(Math.PI / 2 - lineI.getTheta());
@@ -251,71 +251,6 @@ public class ChessboardAnalyzer implements Runnable {
         }
         // Return lines that do not overlap each other in frame area
         return lines;
-    }
-
-    /**
-     * Check if lines intersect in frame area.
-     */
-    private boolean linesIntersect(Line line1, Line line2) {
-
-        // Get start and end points for lines
-        Point p1 = line1.getStartingPoint();
-        Point p2 = line1.getEndingPoint();
-        Point p3 = line2.getStartingPoint();
-        Point p4 = line2.getEndingPoint();
-
-        double a1 = p2.y - p1.y;
-        double b1 = p1.x - p2.x;
-        double c1 = a1 * p1.x + b1 * p1.y;
-
-        double a2 = p4.y - p3.y;
-        double b2 = p3.x - p4.x;
-        double c2 = a2 * p3.x + b2 * p3.y;
-
-        double determinant = a1 * b2 - a2 * b1;
-
-        // if determinant is zero --> lines do not intersect
-
-        if (determinant == 0) {
-            return false;
-        }
-
-        double x = (b2 * c1 - b1 * c2) / determinant;
-        double y = (a1 * c2 - a2 * c1) / determinant;
-
-        if (x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Finds the intersection point of two lines
-     */
-    private Point findIntersectionPoint(Line line1, Line line2) {
-        // Horizontal line calculation
-        double a0 = Math.cos(line1.getTheta()), b0 = Math.sin(line1.getTheta());
-        double x0h = a0 * line1.getRho(), y0h = b0 * line1.getRho();
-        double x1 = x0h + 3000 * (-1 * b0);
-        double y1 = y0h + 3000 * a0;
-        double x2 = x0h - 3000 * (-1 * b0);
-        double y2 = y0h - 3000 * a0;
-
-        // Vertical line calculation
-        double a1 = Math.cos(line2.getTheta()), b1 = Math.sin(line2.getTheta());
-        double x0v = a1 * line2.getRho(), y0v = b1 * line2.getRho();
-        double x3 = x0v + 3000 * (-1 * b1);
-        double y3 = y0v + 3000 * a1;
-        double x4 = x0v - 3000 * (-1 * b1);
-        double y4 = y0v - 3000 * a1;
-
-        // Intersection point calculation
-        double u = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-        int x = (int) (x1 + u * (x2 - x1));
-        int y = (int) (y1 + u * (y2 - y1));
-
-        return new Point(x, y);
     }
 
     /**
@@ -449,6 +384,7 @@ public class ChessboardAnalyzer implements Runnable {
 
     /**
      * Takes list of lines as input and creates a transparent bitmap where lines are drawn.
+     *
      * @param lines
      * @param bitmapHeight
      * @param bitmapWidth
@@ -479,6 +415,66 @@ public class ChessboardAnalyzer implements Runnable {
         Bitmap bitmap = Bitmap.createBitmap(black.width(), black.height(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(black, bitmap);
         return bitmap;
+    }
+
+    /**
+     * Takes two lines as input and calculates their intersection point.
+     * If lines do not intersect, a point with Double.NaN coordinates is returned.
+     *
+     * @param line1
+     * @param line2
+     * @return intersection point
+     */
+    public static Point findIntersectionPoint(Line line1, Line line2) {
+        // Get start and end points for lines
+        Point p1 = line1.getStartingPoint();
+        Point p2 = line1.getEndingPoint();
+        Point p3 = line2.getStartingPoint();
+        Point p4 = line2.getEndingPoint();
+
+        double a1 = p2.y - p1.y;
+        double b1 = p1.x - p2.x;
+        double c1 = a1 * p1.x + b1 * p1.y;
+
+        double a2 = p4.y - p3.y;
+        double b2 = p3.x - p4.x;
+        double c2 = a2 * p3.x + b2 * p3.y;
+
+        double determinant = a1 * b2 - a2 * b1;
+
+        // if determinant is zero --> lines do not intersect
+        if (determinant == 0) {
+            return new Point(Double.NaN, Double.NaN);
+        }
+
+        double x = (b2 * c1 - b1 * c2) / determinant;
+        double y = (a1 * c2 - a2 * c1) / determinant;
+
+        return new Point(x, y);
+    }
+
+    /**
+     * Takes two lines as input + coordinate x,y and checks if lines intersect in area
+     * where X = [0, x] and Y = [0, Y].
+     *
+     * @param line1
+     * @param line2
+     * @param x
+     * @param y
+     * @return true if lines intersect
+     */
+    public static boolean linesIntersectInArea(Line line1, Line line2, int x, int y) {
+        // Get intersection point
+        Point point = findIntersectionPoint(line1, line2);
+        // Check if point exist
+        if (point.x == Double.NaN || point.y == Double.NaN) {
+            return false;
+        }
+        // Check that lines intersect inside frame area
+        if (point.x >= 0 && point.x <= x && point.y >= 0 && point.y <= y) {
+            return true;
+        }
+        return false;
     }
 
     /**
