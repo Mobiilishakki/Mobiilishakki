@@ -2,13 +2,9 @@
 [![Build Status](https://travis-ci.org/Mobiilishakki/Mobiilishakki.svg?branch=master)](https://travis-ci.org/Mobiilishakki/Mobiilishakki)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Mobiilishakki/Mobiilishakki/blob/master/LICENSE)
 
-Tarkoituksena toteuttaaa konenäköön perustuva sovellus, jonka avulla kaksi ihmispelaajaa voivat pelata shakkia fyysisellä laudalla vaikka eivät ole samassa tilassa. Tämä vaatii konenäköratkaisun, joka tunnistaa (kännykkä)kameran kuvavirrasta shakkilaudan, sekä laudalla olevan tilanteen ja siirron. Peli etenee, kun havaittu siirto toimitetaan verkon yli toisella pelaajalle, joka sitten suorittaa fyysisen siirron omalla laudallaan. Yksittäisen pelin kulku tulee tallentaa tietokantaan mahdollistaen pelin myöhemmän esittämisen sekä koneanalyysin. Aihe ei vaadi konenäöstä aiempaa erityistietämystä, sillä toteutuksessa voidaan hyödyntää valmiita vapaan lähdekoodin konenäkökirjastoja (esim. OpenCV - https://opencv.org/). Tunnistuksessa voidaan lähteä oletuksesta, että kamera on mahdollisimman optimaalisesti aseteltu tunnistamista varten.
+The purpose of this project is to create an application based on machine vision, so that two human players can play chess on their own physical boards even when they aren't in the same place. This will require a machine vision solution where the chessboard, the pieces and the moves are recognized from a video feed. The game will advance when the detected move is transferred over internet to another player who then makes that physical move on his own board. The games will be saved to a database, making it possible to view and analyze them later. OpenCV (https://opencv.org/) can be used for machine vision.
 
-Lisäominaisuutena voidaan toteuttaa fyysisellä laudalla pelattava peli tietokonetta vastaan käyttäen omaa tai jotakin olemassa olevaa open-source shakkimoottoria (kuten Stockfish - https://stockfishchess.org/). Sekä lisäominaisuutena voidaan tarjota tietokonepohjaista analyysia pelatusta pelistä tai virtuaalista valmentajaa, joka osaisi esimerkiksi vihjata ihmispelaajalle, mitkä siirrot olisivat vaatineet tarkempaa pohdintaa.
-
-Aihe liittyy shakin pelaajakunnan laajentamiseen, siten että digitaalisen shakin edut (riippumattomuus pelaajan fyysisestä sijainnista, pelihistorian automaattinen tallentaminen, tietokoneanalyysi, tietokonevastustaja...) voidaan tuoda pelaajille, jotka enemmän arvostavat fyysistä shakkilauttaa käyttökokemuksena kuin hohtavia ruutuja.
-
-
+An additional feature could be a chess game that can be played on physical board against a computer. Also there could be a computer based analysis on played games, or a virtual coach that could for example give a hint to the human player on which moves were not very good.
 
 [Backlog](https://docs.google.com/spreadsheets/d/1zG-0s1h2mIXxn2nuR7uvuNg6FT7avz7rtKZj1EuxpaE/edit#gid=1)
 
