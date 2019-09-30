@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private static int frameWidth = 0;
     private static int frameHeight = 0;
+    private static boolean correctLines = false;
 
     // Latest frame that was processed
     private Mat lastFrame;
@@ -123,11 +124,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         // Mat object for holding the result of edge detection (Canny)
         Mat edges = new Mat();
-        Canny(grayFrame, edges, 50, 150, 3, false);
+        Canny(grayFrame, edges, 100, 300, 3, false); // thresholds changed from 50/150
 
         // Apply line detection
         Mat linesMat = new Mat();
-        HoughLines(edges, linesMat, 1, Math.PI / 180, 150);
+        HoughLines(edges, linesMat, 1, Math.PI / 180, 125); // threshold changed from 150
 
         // Skip if no lines found
         if (linesMat.empty()) {
@@ -150,21 +151,40 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             mergedLines = mergeLines(linegroups);
         }
 
+        // If not enough lines to form a chess board, return
+        if (lines.size() < 18) {
+            return rgbFrame;
+        }
+
         // Filter lines that are not part of main chessboard grid
         lines = filterRedundantLines(mergedLines);
 
         // Check if we have right amount of lines to form chessboard
-        if (lines.size() == 18) {
-            System.out.println("Could be a board!!!");
+        if (!correctLines) {
+            return rgbFrame;
         }
 
         // Draw lines to video feed
         drawLinesToMat(lines, rgbFrame);
 
         // Draw intersection points to video feed
-        findAndDrawIntersectionPoints(lines, rgbFrame);
+        List<Point> intersectionPoints = findAndDrawIntersectionPoints(lines, rgbFrame);
+
+
+        // Get chess squares from the intersection points
+        List<ChessSquare> squares = getChessSquares(intersectionPoints, rgbFrame);
 
         return rgbFrame;
+    }
+
+    /**
+     * Draw corners of a chess square to a Mat object
+     */
+    private static Mat drawSquareToMat(ChessSquare square, Mat frame) {
+        for (Point point : square.getPoints()) {
+            circle(frame, point, 5, new Scalar(255, 0, 0), 3);
+        }
+        return frame;
     }
 
     /**
@@ -176,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             Point pt2 = line.getEndingPoint();
             line(frame, pt1, pt2, new Scalar(0, 0, 255), 1, LINE_AA, 0);
         }
+
         return frame;
     }
 
@@ -266,17 +287,86 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     /**
+     * Creates chess squares from corner points
+     */
+    private static List<ChessSquare> getChessSquares(List<Point> pointList, Mat rgbFrame) {
+        // Order all intersection points by their y coordinate
+        for (int i = 0; i < pointList.size() - 1; i++) {
+            for (int j = 0 ; j < pointList.size() - i - 1; j++) {
+                if (pointList.get(j).y > pointList.get(j + 1).y) {
+                    Point p = pointList.get(j);
+                    pointList.set(j, pointList.get(j + 1));
+                    pointList.set(j + 1, p);
+                }
+            }
+        }
+
+        // Order individual intersection point rows by their x coordinate
+        for (int i = 0; i < 9; i++) {
+            Point[] pointArray = new Point[9];
+            for (int j = 0; j < 9; j++) {
+                pointArray[j] = pointList.get((i * 9) + (j));
+            }
+            for (int j = 0; j < 9; j++) {
+                for (int k = 0; k < 9 - 1; k++) {
+                    if (pointArray[k].x > pointArray[k + 1].x) {
+                        Point p = pointArray[k];
+                        pointArray[k] = pointArray[k + 1];
+                        pointArray[k + 1] = p;
+                    }
+                }
+            }
+
+            for (int j = 0; j < 9; j++) {
+                pointList.set((i * 9) + (j), pointArray[j]);
+            }
+
+        }
+
+        List<ChessSquare> squares = new ArrayList<>();
+        List<List<Point>> squarePoints = new ArrayList<>();
+
+
+        for (int i = 0; i < 64; i++) {
+            squarePoints.add(new ArrayList<Point>());
+        }
+
+        int row = 0;
+
+        for (int i = 0; i < pointList.size() - 9; i++) {
+            if (i % 9 != 8) {
+                squarePoints.get(i - row).add(pointList.get(i));
+                squarePoints.get(i - row).add(pointList.get(i + 9));
+                squarePoints.get(i - row).add(pointList.get(i + 1));
+                squarePoints.get(i - row).add(pointList.get(i + 9 + 1));
+            } else {
+                row++;
+            }
+        }
+
+        for (int i = 0; i < squarePoints.size(); i++) {
+            squares.add(new ChessSquare(squarePoints.get(i)));
+        }
+
+        return squares;
+    }
+
+    /**
      * Finds the intersection points for lines, then draws them on the Mat object
      */
-    private static void findAndDrawIntersectionPoints(List<Line> lines, Mat rgbFrame) {
+    private static List<Point> findAndDrawIntersectionPoints(List<Line> lines, Mat rgbFrame) {
+        // Create list for intersection points
+        List<Point> intersectionPoints = new ArrayList<>();
+
         // Create lists for vertical and horizontal lines
         List<Line> vertical = new ArrayList<>();
         List<Line> horizontal = new ArrayList<>();
+
         // Iterate through all lines and group them to horizontal and vertical lines
-        for(Line line : lines) {
-            if(line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
+        for (Line line : lines) {
+            if (line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
                 vertical.add(line);     // line angle closer to vertical
-            }else {
+            } else {
                 horizontal.add(line);   // line angle closer to horizontal
             }
         }
@@ -284,33 +374,44 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         for (Line verticalLine : vertical) {
             for (Line horizontalLine : horizontal) {
                 if (linesIntersect(verticalLine, horizontalLine)) {
-                    // Horizontal line calculation
-                    double a0 = Math.cos(horizontalLine.getTheta()), b0 = Math.sin(horizontalLine.getTheta());
-                    double x0h = a0 * horizontalLine.getRho(), y0h = b0 * horizontalLine.getRho();
-                    double x1 = x0h + 3000*(-1 * b0);
-                    double y1 = y0h + 3000*a0;
-                    double x2 = x0h - 3000*(-1 * b0);
-                    double y2 = y0h - 3000*a0;
-
-                    // Vertical line calculation
-                    double a1 = Math.cos(verticalLine.getTheta()), b1 = Math.sin(verticalLine.getTheta());
-                    double x0v = a1 * verticalLine.getRho(), y0v = b1 * verticalLine.getRho();
-                    double x3 = x0v + 3000*(-1 * b1);
-                    double y3 = y0v + 3000*a1;
-                    double x4 = x0v - 3000*(-1 * b1);
-                    double y4 = y0v - 3000*a1;
-
-                    // Intersection point calculation
-                    double u = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
-                    int x = (int) (x1 + u * (x2 - x1));
-                    int y = (int) (y1 + u * (y2 - y1));
-                    Point intersection = new Point(x, y);
-
-
+                    Point intersection = findIntersectionPoint(verticalLine, horizontalLine);
+                    intersectionPoints.add(intersection);
                     circle(rgbFrame, intersection, 8, new Scalar(255, 0, 0));
                 }
             }
         }
+        return intersectionPoints;
+    }
+
+    /**
+     * Finds the intersection point of two lines
+     */
+    public static Point findIntersectionPoint(Line line1, Line line2) {
+        // Get start and end points for lines
+        Point p1 = line1.getStartingPoint();
+        Point p2 = line1.getEndingPoint();
+        Point p3 = line2.getStartingPoint();
+        Point p4 = line2.getEndingPoint();
+
+        double a1 = p2.y - p1.y;
+        double b1 = p1.x - p2.x;
+        double c1 = a1 * p1.x + b1 * p1.y;
+
+        double a2 = p4.y - p3.y;
+        double b2 = p3.x - p4.x;
+        double c2 = a2 * p3.x + b2 * p3.y;
+
+        double determinant = a1 * b2 - a2 * b1;
+
+        // if determinant is zero --> lines do not intersect
+        if (determinant == 0.0) {
+            return new Point(Double.NaN, Double.NaN);
+        }
+
+        double x = (b2 * c1 - b1 * c2) / determinant;
+        double y = (a1 * c2 - a2 * c1) / determinant;
+
+        return new Point(x, y);
     }
 
     /**
@@ -319,14 +420,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
      */
     private static List<Line> filterRedundantLines(List<Line> lines) {
         // Create lists for vertical and horizontal lines
+        correctLines = false;
         List<Line> vertical = new ArrayList<>();
         List<Line> horizontal = new ArrayList<>();
         // Iterate through all lines and group them to horizontal and vertical lines
         for (Line line : lines) {
             if (line.getTheta() >= Math.PI / 4 && line.getTheta() <= Math.PI / 4 * 3) {
-                vertical.add(line);     // line angle closer to vertical
+                horizontal.add(line);     // line angle closer to vertical
             } else {
-                horizontal.add(line);   // line angle closer to horizontal
+                vertical.add(line);   // line angle closer to horizontal
             }
         }
 
@@ -334,8 +436,47 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         vertical = removeIntersectingLines(vertical, true);
         horizontal = removeIntersectingLines(horizontal, false);
 
+        for (int i = 0; i < horizontal.size() - 1; i++) {
+            for (int j = 0; j < horizontal.size() - i - 1; j++) {
+                if (horizontal.get(j).getRho() < horizontal.get(j + 1).getRho()) {
+                    Line l = horizontal.get(j);
+                    horizontal.set(j, horizontal.get(j + 1));
+                    horizontal.set(j + 1, l);
+                }
+            }
+        }
+        for (int i = 0; i < vertical.size() - 1; i++) {
+            for (int j = 0; j < vertical.size() - i - 1; j++) {
+                if (vertical.get(j).getRho() < vertical.get(j + 1).getRho()) {
+                    Line l = vertical.get(j);
+                    vertical.set(j, vertical.get(j + 1));
+                    vertical.set(j + 1, l);
+                }
+            }
+        }
+
+        // Get a vertical line and find out the intersection points of that and the bottom horizontal lines
+        Line line = vertical.get(vertical.size() / 2);
+        Point intersection1 = findIntersectionPoint(line, horizontal.get(0));
+        Point intersection2 = findIntersectionPoint(line, horizontal.get(1));
+        Point intersection3 = findIntersectionPoint(line, horizontal.get(2));
+
+        // Calculate and compare the distances of the intersection points
+        int ydiff1 = (int) Math.abs(intersection1.y - intersection2.y);
+        int ydiff2 = (int) Math.abs(intersection2.y - intersection3.y);
+
+        // If differences too big, redundant bottom line detected
+        if (2*ydiff1 < ydiff2) {
+            horizontal.remove(0);
+        }
+
+
         // TODO: remove extra lines.
         //  9 most centered lines should be considered as actual grid lines
+
+        if (vertical.size() == 9 && horizontal.size() == 9) {
+            correctLines = true;
+        }
 
         // Merge horizontal and vertical lines
         lines = vertical;
@@ -363,7 +504,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Line lineJ = lines.get(j);
                 if (linesIntersect(lineI, lineJ)) {
                     double deltaI, deltaJ;
-                    if (isVertical) {
+                    if (!isVertical) {
                         deltaI = Math.abs(Math.PI / 2 - lineI.getTheta());
                         deltaJ = Math.abs(Math.PI / 2 - lineJ.getTheta());
                     } else {
@@ -412,6 +553,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         double determinant = a1 * b2 - a2 * b1;
 
         // if determinant is zero --> lines do not intersect
+
         if (determinant == 0) {
             return false;
         }
@@ -422,7 +564,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         if (x >= 0 && x <= frameWidth && y >= 0 && y <= frameHeight) {
             return true;
         }
-        
+
         return false;
     }
 
