@@ -68,34 +68,102 @@ public class ChessboardAnalyzer implements Runnable {
         // Merge similar lines together
         List<Line> mergedLines = mergeSimilarLines(lines);
 
-        // if not enough lines --> could not detect board
-        //if (lines.size() < 18) {
-        //    return false;
-        //}
-
         // Filter lines that are not part of main chessboard grid
         List<Line> filteredLines = filterRedundantLines(mergedLines);
-        // If detection has failed or wrong number of lines were detected
-        //if (!boardDetected || lines.size() != 18) {
-        //    return false;
-        //}
 
+        // Transparent 4C Mat-object
         Mat mat = createTransparentMat(frameHeight, frameWidth);
 
         // Draw lines to frame image
         mat = drawLinesTo4CMat(filteredLines, mat);
 
+        bitmap = DataUtils.matToBitmapConversion(mat);
+
+        // If detection has failed or wrong number of lines were detected
+        if (!boardDetected) {
+            return false;
+        }
+
         // Find intersection points for vertical and horizontal lines
-        List<Point> intersectionPoints = findIntersectionPoints(lines, frameWidth, frameHeight);
+        List<Point> intersectionPoints = findIntersectionPoints(filteredLines, frameWidth, frameHeight);
 
         // Draw intersection points to mat
         mat = drawIntersectionPointsTo4CMat(intersectionPoints, mat);
+
+        // Get chess squares from the intersection points
+        //List<ChessSquare> squares = getChessSquares(intersectionPoints);
+
 
         // Draw intersection points
         bitmap = DataUtils.matToBitmapConversion(mat);
 
         // Everything ok...
         return true;
+    }
+
+    /**
+     * Creates chess squares from corner points
+     */
+    private static List<ChessSquare> getChessSquares(List<Point> pointList) {
+        // Order all intersection points by their y coordinate
+        for (int i = 0; i < pointList.size() - 1; i++) {
+            for (int j = 0 ; j < pointList.size() - i - 1; j++) {
+                if (pointList.get(j).y > pointList.get(j + 1).y) {
+                    Point p = pointList.get(j);
+                    pointList.set(j, pointList.get(j + 1));
+                    pointList.set(j + 1, p);
+                }
+            }
+        }
+
+        // Order individual intersection point rows by their x coordinate
+        for (int i = 0; i < 9; i++) {
+            Point[] pointArray = new Point[9];
+            for (int j = 0; j < 9; j++) {
+                pointArray[j] = pointList.get((i * 9) + (j));
+            }
+            for (int j = 0; j < 9; j++) {
+                for (int k = 0; k < 9 - 1; k++) {
+                    if (pointArray[k].x > pointArray[k + 1].x) {
+                        Point p = pointArray[k];
+                        pointArray[k] = pointArray[k + 1];
+                        pointArray[k + 1] = p;
+                    }
+                }
+            }
+
+            for (int j = 0; j < 9; j++) {
+                pointList.set((i * 9) + (j), pointArray[j]);
+            }
+
+        }
+
+        List<ChessSquare> squares = new ArrayList<>();
+        List<List<Point>> squarePoints = new ArrayList<>();
+
+
+        for (int i = 0; i < 64; i++) {
+            squarePoints.add(new ArrayList<Point>());
+        }
+
+        int row = 0;
+
+        for (int i = 0; i < pointList.size() - 9; i++) {
+            if (i % 9 != 8) {
+                squarePoints.get(i - row).add(pointList.get(i));
+                squarePoints.get(i - row).add(pointList.get(i + 9));
+                squarePoints.get(i - row).add(pointList.get(i + 1));
+                squarePoints.get(i - row).add(pointList.get(i + 9 + 1));
+            } else {
+                row++;
+            }
+        }
+
+        for (int i = 0; i < squarePoints.size(); i++) {
+            squares.add(new ChessSquare(squarePoints.get(i)));
+        }
+
+        return squares;
     }
 
     /**
@@ -120,40 +188,41 @@ public class ChessboardAnalyzer implements Runnable {
         vertical = removeIntersectingLines(vertical, true, frameWidth, frameHeight);
         horizontal = removeIntersectingLines(horizontal, false, frameWidth, frameHeight);
 
-//        for (int i = 0; i < horizontal.size() - 1; i++) {
-//            for (int j = 0; j < horizontal.size() - i - 1; j++) {
-//                if (horizontal.get(j).getRho() < horizontal.get(j + 1).getRho()) {
-//                    Line l = horizontal.get(j);
-//                    horizontal.set(j, horizontal.get(j + 1));
-//                    horizontal.set(j + 1, l);
-//                }
-//            }
-//        }
-//        for (int i = 0; i < vertical.size() - 1; i++) {
-//            for (int j = 0; j < vertical.size() - i - 1; j++) {
-//                if (vertical.get(j).getRho() < vertical.get(j + 1).getRho()) {
-//                    Line l = vertical.get(j);
-//                    vertical.set(j, vertical.get(j + 1));
-//                    vertical.set(j + 1, l);
-//                }
-//            }
-//        }
-//
-//        // Get a vertical line and find out the intersection points of that and the bottom horizontal lines
-//        Line line = vertical.get(vertical.size() / 2);
-//        Point intersection1 = findIntersectionPoint(line, horizontal.get(0));
-//        Point intersection2 = findIntersectionPoint(line, horizontal.get(1));
-//        Point intersection3 = findIntersectionPoint(line, horizontal.get(2));
-//
-//        // Calculate and compare the distances of the intersection points
-//        int ydiff1 = (int) Math.abs(intersection1.y - intersection2.y);
-//        int ydiff2 = (int) Math.abs(intersection2.y - intersection3.y);
-//
-//        // If differences too big, redundant bottom line detected
-//        if (2*ydiff1 < ydiff2) {
-//            horizontal.remove(0);
-//        }
+        for (int i = 0; i < horizontal.size() - 1; i++) {
+            for (int j = 0; j < horizontal.size() - i - 1; j++) {
+                if (horizontal.get(j).getRho() < horizontal.get(j + 1).getRho()) {
+                    Line l = horizontal.get(j);
+                    horizontal.set(j, horizontal.get(j + 1));
+                    horizontal.set(j + 1, l);
+                }
+            }
+        }
+        for (int i = 0; i < vertical.size() - 1; i++) {
+            for (int j = 0; j < vertical.size() - i - 1; j++) {
+                if (vertical.get(j).getRho() < vertical.get(j + 1).getRho()) {
+                    Line l = vertical.get(j);
+                    vertical.set(j, vertical.get(j + 1));
+                    vertical.set(j + 1, l);
+                }
+            }
+        }
 
+        // Get a vertical line and find out the intersection points of that and the bottom horizontal lines
+        if(vertical.size() > 3) {
+            Line line = vertical.get(vertical.size() / 2);
+            Point intersection1 = findIntersectionPoint(line, horizontal.get(0));
+            Point intersection2 = findIntersectionPoint(line, horizontal.get(1));
+            Point intersection3 = findIntersectionPoint(line, horizontal.get(2));
+
+            // Calculate and compare the distances of the intersection points
+            int ydiff1 = (int) Math.abs(intersection1.y - intersection2.y);
+            int ydiff2 = (int) Math.abs(intersection2.y - intersection3.y);
+
+            // If differences too big, redundant bottom line detected
+            if (2*ydiff1 < ydiff2) {
+                horizontal.remove(0);
+            }
+        }
 
         // TODO: remove extra lines.
         //  9 most centered lines should be considered as actual grid lines
@@ -492,7 +561,7 @@ public class ChessboardAnalyzer implements Runnable {
     public static Mat drawIntersectionPointsTo4CMat(List<Point> intersections, Mat mat) {
         // Draw points to mat
         for(Point point : intersections) {
-            circle(mat, point, 8, new Scalar(255, 0, 0));
+            circle(mat, point, 8, new Scalar(255, 0, 0, 255), 3);
         }
         return mat;
     }

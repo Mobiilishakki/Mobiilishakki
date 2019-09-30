@@ -64,7 +64,6 @@ public class MainActivity extends AppCompatActivity implements Camera.PreviewCal
 
     }
 
-
     /**
      * Get camera instance. Returns null if instance could not be opened.
      *
