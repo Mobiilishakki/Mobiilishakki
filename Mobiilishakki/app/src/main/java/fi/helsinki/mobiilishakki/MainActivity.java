@@ -151,6 +151,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             mergedLines = mergeLines(linegroups);
         }
 
+        // If not enough lines to form a chess board, return
         if (lines.size() < 18) {
             return rgbFrame;
         }
@@ -173,15 +174,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         // Get chess squares from the intersection points
         List<ChessSquare> squares = getChessSquares(intersectionPoints, rgbFrame);
 
-        for (Point pt : squares.get(0).getPoints()) {
-            circle(rgbFrame, pt, 5, new Scalar(255, 0, 0), 5);
-        }
-
-        for (Point pt : squares.get(squares.size() - 1).getPoints()) {
-            circle(rgbFrame, pt, 5, new Scalar(255, 0, 0), 5);
-        }
-
         return rgbFrame;
+    }
+
+    /**
+     * Draw corners of a chess square to a Mat object
+     */
+    private static Mat drawSquareToMat(ChessSquare square, Mat frame) {
+        for (Point point : square.getPoints()) {
+            circle(frame, point, 5, new Scalar(255, 0, 0), 3);
+        }
+        return frame;
     }
 
     /**
@@ -320,8 +323,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         }
 
-        //System.out.println(orderedPoints.toString());
-
         List<ChessSquare> squares = new ArrayList<>();
         List<List<Point>> squarePoints = new ArrayList<>();
 
@@ -385,27 +386,30 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     /**
      * Finds the intersection point of two lines
      */
-    private static Point findIntersectionPoint(Line line1, Line line2) {
-        // Horizontal line calculation
-        double a0 = Math.cos(line1.getTheta()), b0 = Math.sin(line1.getTheta());
-        double x0h = a0 * line1.getRho(), y0h = b0 * line1.getRho();
-        double x1 = x0h + 3000*(-1 * b0);
-        double y1 = y0h + 3000*a0;
-        double x2 = x0h - 3000*(-1 * b0);
-        double y2 = y0h - 3000*a0;
+    public static Point findIntersectionPoint(Line line1, Line line2) {
+        // Get start and end points for lines
+        Point p1 = line1.getStartingPoint();
+        Point p2 = line1.getEndingPoint();
+        Point p3 = line2.getStartingPoint();
+        Point p4 = line2.getEndingPoint();
 
-        // Vertical line calculation
-        double a1 = Math.cos(line2.getTheta()), b1 = Math.sin(line2.getTheta());
-        double x0v = a1 * line2.getRho(), y0v = b1 * line2.getRho();
-        double x3 = x0v + 3000*(-1 * b1);
-        double y3 = y0v + 3000*a1;
-        double x4 = x0v - 3000*(-1 * b1);
-        double y4 = y0v - 3000*a1;
+        double a1 = p2.y - p1.y;
+        double b1 = p1.x - p2.x;
+        double c1 = a1 * p1.x + b1 * p1.y;
 
-        // Intersection point calculation
-        double u = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
-        int x = (int) (x1 + u * (x2 - x1));
-        int y = (int) (y1 + u * (y2 - y1));
+        double a2 = p4.y - p3.y;
+        double b2 = p3.x - p4.x;
+        double c2 = a2 * p3.x + b2 * p3.y;
+
+        double determinant = a1 * b2 - a2 * b1;
+
+        // if determinant is zero --> lines do not intersect
+        if (determinant == 0.0) {
+            return new Point(Double.NaN, Double.NaN);
+        }
+
+        double x = (b2 * c1 - b1 * c2) / determinant;
+        double y = (a1 * c2 - a2 * c1) / determinant;
 
         return new Point(x, y);
     }
