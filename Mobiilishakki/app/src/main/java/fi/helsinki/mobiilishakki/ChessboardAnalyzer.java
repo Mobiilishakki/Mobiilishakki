@@ -57,53 +57,32 @@ public class ChessboardAnalyzer implements Runnable {
     /**
      * Method for detecting chessboard. Returns true or false depending on the detection success.
      */
-    private boolean detectBoard() {
-        // Create Mat-object from bytes
+    public boolean detectBoard() {
+        // Create frame (Mat-object) from bytes
         Mat frame = DataUtils.bytesToMatConversion(bytes, cameraParams);
         frameWidth = frame.cols();
         frameHeight = frame.rows();
-        // Mat-object for holding gray frame
-        Mat grayFrame = new Mat();
-        Imgproc.cvtColor(frame, grayFrame, COLOR_BGR2GRAY);
-        // Blurring the image to reduce the amount of "false positives"
-        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
-        // Create binary Mat-object
-        Mat binaryMat = new Mat(grayFrame.size(), grayFrame.type());
-        // Apply thresholding
-        threshold(grayFrame, binaryMat, 100, 255, THRESH_BINARY);
-        // Mat object for holding the result of edge detection (Canny)
-        Mat edges = new Mat();
-        Canny(grayFrame, edges, 100, 300, 3, false); // thresholds changed from 50/150
-        // Apply line detection
-        Mat linesMat = new Mat();
-        HoughLines(edges, linesMat, 1, Math.PI / 180, 125); // threshold changed from 150
 
+        // Detect lines from frame and create a list of them
+        List<Line> lines = detectLinesFromFrame(frame);
 
-        // Get lines in a list
-        List<Line> lines = getLinesList(linesMat);
-        // Get linegroups
-        List<Linegroup> linegroups = getLinegroups(lines);
-        // Get merged lines
-        List<Line> mergedLines = mergeLines(linegroups);
-        // Keep merging lines until stable situation
-        while (lines.size() != mergedLines.size()) {
-            lines = mergedLines;
-            linegroups = getLinegroups(lines);
-            mergedLines = mergeLines(linegroups);
-        }
+        // Merge similar lines together
+        List<Line> mergedLines = mergeSimilarLines(lines);
+
         // if not enough lines --> could not detect board
         //if (lines.size() < 18) {
         //    return false;
         //}
 
         // Filter lines that are not part of main chessboard grid
-        lines = filterRedundantLines(mergedLines);
+        List<Line> filteredLines = filterRedundantLines(mergedLines);
         // If detection has failed or wrong number of lines were detected
         //if (!boardDetected || lines.size() != 18) {
         //    return false;
         //}
+        
         // Draw lines to frame image
-        bitmap = createLineBitmap(lines);
+        bitmap = createBitmapFromLines(filteredLines, frameHeight, frameWidth);
 
         // Draw intersection points to video feed
 //        List<Point> intersectionPoints = findAndDrawIntersectionPoints(lines, frame);
@@ -138,7 +117,7 @@ public class ChessboardAnalyzer implements Runnable {
 
         // Iterate through all lines and group them to horizontal and vertical lines
         for (Line line : lines) {
-            if (line.getTheta() >= Math.PI/4 && line.getTheta() <= Math.PI/4*3) {
+            if (line.getTheta() >= Math.PI / 4 && line.getTheta() <= Math.PI / 4 * 3) {
                 vertical.add(line);     // line angle closer to vertical
             } else {
                 horizontal.add(line);   // line angle closer to horizontal
@@ -318,21 +297,21 @@ public class ChessboardAnalyzer implements Runnable {
         // Horizontal line calculation
         double a0 = Math.cos(line1.getTheta()), b0 = Math.sin(line1.getTheta());
         double x0h = a0 * line1.getRho(), y0h = b0 * line1.getRho();
-        double x1 = x0h + 3000*(-1 * b0);
-        double y1 = y0h + 3000*a0;
-        double x2 = x0h - 3000*(-1 * b0);
-        double y2 = y0h - 3000*a0;
+        double x1 = x0h + 3000 * (-1 * b0);
+        double y1 = y0h + 3000 * a0;
+        double x2 = x0h - 3000 * (-1 * b0);
+        double y2 = y0h - 3000 * a0;
 
         // Vertical line calculation
         double a1 = Math.cos(line2.getTheta()), b1 = Math.sin(line2.getTheta());
         double x0v = a1 * line2.getRho(), y0v = b1 * line2.getRho();
-        double x3 = x0v + 3000*(-1 * b1);
-        double y3 = y0v + 3000*a1;
-        double x4 = x0v - 3000*(-1 * b1);
-        double y4 = y0v - 3000*a1;
+        double x3 = x0v + 3000 * (-1 * b1);
+        double y3 = y0v + 3000 * a1;
+        double x4 = x0v - 3000 * (-1 * b1);
+        double y4 = y0v - 3000 * a1;
 
         // Intersection point calculation
-        double u = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+        double u = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
         int x = (int) (x1 + u * (x2 - x1));
         int y = (int) (y1 + u * (y2 - y1));
 
@@ -340,39 +319,82 @@ public class ChessboardAnalyzer implements Runnable {
     }
 
     /**
-     * Get List of lines from Mat-object.
+     * Get frame that contains lines and other openCV stuff."
+     *
+     * @return bitmap frame
      */
-    private List<Line> getLinesList(Mat lines) {
-        List<Line> lineList = new ArrayList<>();
-        for (int i = 0; i < lines.rows(); i++) {
-            double rho = lines.get(i, 0)[0];
-            double theta = lines.get(i, 0)[1];
-            Line line = new Line(rho, theta);
-            lineList.add(line);
-        }
-        return lineList;
+    public Bitmap getFrameInBitmap() {
+        return bitmap;
     }
 
     /**
-     * Get List of merged lines.
+     * Set camera frame that needs to be processed.
+     * Input bytes should be NV21 encoded.
+     *
+     * @param bytes
+     * @param params
      */
-    private List<Line> mergeLines(List<Linegroup> linegroups) {
-        // Create list to contain information about all merged lines
-        List<Line> mLines = new ArrayList<>();
-        // Iterate through all linegroups and combine groups
-        for (Linegroup linegroup : linegroups) {
-            double rho = linegroup.getAverageRho();
-            double theta = linegroup.getAverageTheta();
-            Line line = new Line(rho, theta);
-            mLines.add(line);
-        }
-        return mLines;
+    public void setFrameBytes(byte[] bytes, Camera.Parameters params) {
+        this.bytes = bytes;
+        this.cameraParams = params;
+    }
+
+    // STATIC METHODS
+
+    /**
+     * Takes Mat-object (frame) as input and returns list of lines that were detected.
+     *
+     * @param frame
+     * @return detected lines
+     */
+    public static List<Line> detectLinesFromFrame(Mat frame) {
+        // Mat-object for holding gray frame
+        Mat grayFrame = new Mat();
+        Imgproc.cvtColor(frame, grayFrame, COLOR_BGR2GRAY);
+        // Blurring the image to reduce the amount of "false positives"
+        GaussianBlur(grayFrame, grayFrame, new Size(3, 3), BORDER_DEFAULT);
+        // Create binary Mat-object
+        Mat binaryMat = new Mat(grayFrame.size(), grayFrame.type());
+        // Apply thresholding
+        threshold(grayFrame, binaryMat, 100, 255, THRESH_BINARY);
+        // Mat object for holding the result of edge detection (Canny)
+        Mat edges = new Mat();
+        Canny(grayFrame, edges, 100, 300, 3, false); // thresholds changed from 50/150
+        // Apply line detection
+        Mat linesMat = new Mat();
+        HoughLines(edges, linesMat, 1, Math.PI / 180, 125); // threshold changed from 150
+        // Get lines in a list
+        List<Line> lines = getLinesList(linesMat);
+        return lines;
     }
 
     /**
-     * Get List of linegroups.
+     * Takes a list of lines as input and merges similar lines together.
+     *
+     * @param lines
+     * @return merged lines
      */
-    private List<Linegroup> getLinegroups(List<Line> lines) {
+    public static List<Line> mergeSimilarLines(List<Line> lines) {
+        // Get linegroups
+        List<Linegroup> linegroups = createLinegroups(lines);
+        // Get merged lines
+        List<Line> mergedLines = mergeLinesInLinegroups(linegroups);
+        // Keep merging lines until stable situation
+        while (lines.size() != mergedLines.size()) {
+            lines = mergedLines;
+            linegroups = createLinegroups(lines);
+            mergedLines = mergeLinesInLinegroups(linegroups);
+        }
+        return mergedLines;
+    }
+
+    /**
+     * Takes list of lines as input and groups similar lines to linegroups.
+     *
+     * @param lines
+     * @return list of linegroups
+     */
+    public static List<Linegroup> createLinegroups(List<Line> lines) {
         // Define thresholds for rho and theta
         double rhoThreshold = 30;
         double thetaThreshold = 0.1;
@@ -426,11 +448,15 @@ public class ChessboardAnalyzer implements Runnable {
     }
 
     /**
-     * Draw lines to bitmap.
+     * Takes list of lines as input and creates a transparent bitmap where lines are drawn.
+     * @param lines
+     * @param bitmapHeight
+     * @param bitmapWidth
+     * @return bitmap
      */
-    private Bitmap createLineBitmap(List<Line> lines) {
+    public static Bitmap createBitmapFromLines(List<Line> lines, int bitmapHeight, int bitmapWidth) {
         // Create black frame
-        Mat black = Mat.zeros(frameHeight, frameWidth, CV_8UC4);
+        Mat black = Mat.zeros(bitmapHeight, bitmapWidth, CV_8UC4);
 
         // Draw lines to frame object
         for (int i = 0; i < lines.size(); i++) {
@@ -456,21 +482,32 @@ public class ChessboardAnalyzer implements Runnable {
     }
 
     /**
-     * Get frame that contains lines and other openCV stuff."
-     * @return bitmap frame
+     * Get List of lines from Mat-object.
      */
-    public Bitmap getFrameInBitmap() {
-        return bitmap;
+    private static List<Line> getLinesList(Mat lines) {
+        List<Line> lineList = new ArrayList<>();
+        for (int i = 0; i < lines.rows(); i++) {
+            double rho = lines.get(i, 0)[0];
+            double theta = lines.get(i, 0)[1];
+            Line line = new Line(rho, theta);
+            lineList.add(line);
+        }
+        return lineList;
     }
 
     /**
-     * Set camera frame that needs to be processed.
-     * Input should be NV21 encoded.
-     * @param bytes
-     * @param params
+     * Get List of merged lines.
      */
-    public void setFrameBytes(byte[] bytes, Camera.Parameters params) {
-        this.bytes = bytes;
-        this.cameraParams = params;
+    private static List<Line> mergeLinesInLinegroups(List<Linegroup> linegroups) {
+        // Create list to contain information about all merged lines
+        List<Line> mLines = new ArrayList<>();
+        // Iterate through all linegroups and combine groups
+        for (Linegroup linegroup : linegroups) {
+            double rho = linegroup.getAverageRho();
+            double theta = linegroup.getAverageTheta();
+            Line line = new Line(rho, theta);
+            mLines.add(line);
+        }
+        return mLines;
     }
 }
