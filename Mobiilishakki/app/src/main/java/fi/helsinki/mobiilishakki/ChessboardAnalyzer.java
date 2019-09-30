@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.hardware.Camera;
 import android.util.Log;
 
-import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
@@ -81,59 +80,22 @@ public class ChessboardAnalyzer implements Runnable {
         //    return false;
         //}
 
-        // Draw lines to frame image
-        bitmap = createBitmapFromLines(filteredLines, frameHeight, frameWidth);
+        Mat mat = createTransparentMat(frameHeight, frameWidth);
 
-        // Draw intersection points to video feed
-//        List<Point> intersectionPoints = findAndDrawIntersectionPoints(lines, frame);
-//        List<Point> orderedPoints = intersectionPoints;
-//        for (int i = 0; i < orderedPoints.size() - 1; i++) {
-//            for (int j = 0 ; j < orderedPoints.size() - i - 1; j++) {
-//                if (orderedPoints.get(j).y > orderedPoints.get(j + 1).y) {
-//                    Point p = orderedPoints.get(j);
-//                    orderedPoints.set(j, orderedPoints.get(j + 1));
-//                    orderedPoints.set(j + 1, p);
-//                }
-//            }
-//        }
-//        for (int i = 0; i < 9; i++) {
-//            circle(frame, orderedPoints.get(i), 12, new Scalar(0, 255, 0));
-//        }
+        // Draw lines to frame image
+        mat = drawLinesTo4CMat(filteredLines, mat);
+
+        // Find intersection points for vertical and horizontal lines
+        List<Point> intersectionPoints = findIntersectionPoints(lines, frameWidth, frameHeight);
+
+        // Draw intersection points to mat
+        mat = drawIntersectionPointsTo4CMat(intersectionPoints, mat);
+
+        // Draw intersection points
+        bitmap = DataUtils.matToBitmapConversion(mat);
 
         // Everything ok...
         return true;
-    }
-
-    /**
-     * Finds the intersection points for lines, then draws them on the Mat object
-     */
-    private List<Point> findAndDrawIntersectionPoints(List<Line> lines, Mat rgbFrame) {
-        // Create list for intersection points
-        List<Point> intersectionPoints = new ArrayList<>();
-
-        // Create lists for vertical and horizontal lines
-        List<Line> vertical = new ArrayList<>();
-        List<Line> horizontal = new ArrayList<>();
-
-        // Iterate through all lines and group them to horizontal and vertical lines
-        for (Line line : lines) {
-            if (line.getTheta() >= Math.PI / 4 && line.getTheta() <= Math.PI / 4 * 3) {
-                vertical.add(line);     // line angle closer to vertical
-            } else {
-                horizontal.add(line);   // line angle closer to horizontal
-            }
-        }
-
-        for (Line verticalLine : vertical) {
-            for (Line horizontalLine : horizontal) {
-                if (linesIntersectInArea(verticalLine, horizontalLine, frameWidth, frameHeight)) {
-                    Point intersection = findIntersectionPoint(verticalLine, horizontalLine);
-                    intersectionPoints.add(intersection);
-                    circle(rgbFrame, intersection, 8, new Scalar(255, 0, 0));
-                }
-            }
-        }
-        return intersectionPoints;
     }
 
     /**
@@ -154,9 +116,9 @@ public class ChessboardAnalyzer implements Runnable {
             }
         }
 
-
-        vertical = removeIntersectingLines(vertical, true);
-        horizontal = removeIntersectingLines(horizontal, false);
+        // Remove lines that intersect
+        vertical = removeIntersectingLines(vertical, true, frameWidth, frameHeight);
+        horizontal = removeIntersectingLines(horizontal, false, frameWidth, frameHeight);
 
 //        for (int i = 0; i < horizontal.size() - 1; i++) {
 //            for (int j = 0; j < horizontal.size() - i - 1; j++) {
@@ -196,6 +158,7 @@ public class ChessboardAnalyzer implements Runnable {
         // TODO: remove extra lines.
         //  9 most centered lines should be considered as actual grid lines
 
+        // Board was detected if 0 vertical and 9 horizontal lines were detected
         if (vertical.size() == 9 && horizontal.size() == 9) {
             boardDetected = true;
         }
@@ -203,53 +166,6 @@ public class ChessboardAnalyzer implements Runnable {
         // Merge horizontal and vertical lines
         lines = vertical;
         lines.addAll(horizontal);
-        return lines;
-    }
-
-    /**
-     * Remove lines that intersect each other in frame area. The line that has higher
-     */
-    private List<Line> removeIntersectingLines(List<Line> lines, boolean isVertical) {
-        // Array where deleted lines are marked
-        boolean[] linesToRemove = new boolean[lines.size()];
-        // Iterate through all combinations
-        for (int i = 0; i < lines.size(); i++) {
-            if (linesToRemove[i] == true) {
-                continue;
-            }
-            for (int j = 0; j < lines.size(); j++) {
-                if (i == j || linesToRemove[j] == true || linesToRemove[i] == true) {
-                    continue;
-                }
-                // Check if lines intersect
-                Line lineI = lines.get(i);
-                Line lineJ = lines.get(j);
-                if (linesIntersectInArea(lineI, lineJ, frameWidth, frameHeight)) {
-                    double deltaI, deltaJ;
-                    if (!isVertical) {
-                        deltaI = Math.abs(Math.PI / 2 - lineI.getTheta());
-                        deltaJ = Math.abs(Math.PI / 2 - lineJ.getTheta());
-                    } else {
-                        if (lineI.getTheta() <= Math.PI / 4) {
-                            deltaI = Math.abs(Math.PI / 4 - lineI.getTheta());
-                        } else {
-                            deltaI = Math.abs(Math.PI - lineI.getTheta());
-                        }
-                        if (lineJ.getTheta() <= Math.PI / 4) {
-                            deltaJ = Math.abs(Math.PI / 4 - lineJ.getTheta());
-                        } else {
-                            deltaJ = Math.abs(Math.PI - lineJ.getTheta());
-                        }
-                    }
-                    if (deltaI > deltaJ) {
-                        linesToRemove[i] = true;
-                    } else {
-                        linesToRemove[j] = true;
-                    }
-                }
-            }
-        }
-        // Return lines that do not overlap each other in frame area
         return lines;
     }
 
@@ -386,35 +302,37 @@ public class ChessboardAnalyzer implements Runnable {
      * Takes list of lines as input and creates a transparent bitmap where lines are drawn.
      *
      * @param lines
-     * @param bitmapHeight
-     * @param bitmapWidth
+     * @param mat
      * @return bitmap
      */
-    public static Bitmap createBitmapFromLines(List<Line> lines, int bitmapHeight, int bitmapWidth) {
-        // Create black frame
-        Mat black = Mat.zeros(bitmapHeight, bitmapWidth, CV_8UC4);
-
+    public static Mat drawLinesTo4CMat(List<Line> lines, Mat mat) {
         // Draw lines to frame object
         for (int i = 0; i < lines.size(); i++) {
             Point pt1 = lines.get(i).getStartingPoint();
             Point pt2 = lines.get(i).getEndingPoint();
-            line(black, pt1, pt2, new Scalar(0, 0, 255, 255), 1, LINE_AA, 0);
+            line(mat, pt1, pt2, new Scalar(0, 0, 255, 255), 1, LINE_AA, 0);
         }
+        return mat;
+    }
 
+    /**
+     * Create 4C trasnsparent Mat-object.
+     *
+     * @param rows
+     * @param cols
+     * @return transparent Mat
+     */
+    public static Mat createTransparentMat(int rows, int cols) {
+        // Create black frame
+        Mat black = Mat.zeros(rows, cols, CV_8UC4);
         // Make other than line pixels transparent
         for (int i = 0; i < black.rows(); i++) {
             for (int j = 0; j < black.cols(); j++) {
                 double[] d = black.get(i, j);
-                if (d[0] == 0 && d[1] == 0 && d[2] == 0) {
-                    d[3] = 0;
-                }
+                d[3] = 0;
             }
         }
-
-        // Create bitmap of the edited frame
-        Bitmap bitmap = Bitmap.createBitmap(black.width(), black.height(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(black, bitmap);
-        return bitmap;
+        return black;
     }
 
     /**
@@ -475,6 +393,108 @@ public class ChessboardAnalyzer implements Runnable {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Remove lines that intersect each other in frame area (X = [0, x] and y = [0, Y].
+     * If lines intersect, the one with higher difference from axis will be deleted.
+     *
+     * @param lines
+     * @param isVertical
+     * @param x
+     * @param y
+     * @return lines that do not intersect
+     */
+    public static List<Line> removeIntersectingLines(List<Line> lines, boolean isVertical, int x, int y) {
+        // Array where deleted lines are marked
+        boolean[] linesToRemove = new boolean[lines.size()];
+        // Iterate through all combinations
+        for (int i = 0; i < lines.size(); i++) {
+            if (linesToRemove[i] == true) {
+                continue;
+            }
+            for (int j = 0; j < lines.size(); j++) {
+                if (i == j || linesToRemove[j] == true || linesToRemove[i] == true) {
+                    continue;
+                }
+                // Check if lines intersect
+                Line lineI = lines.get(i);
+                Line lineJ = lines.get(j);
+                if (linesIntersectInArea(lineI, lineJ, x, y)) {
+                    double deltaI, deltaJ;
+                    if (!isVertical) {
+                        deltaI = Math.abs(Math.PI / 2 - lineI.getTheta());
+                        deltaJ = Math.abs(Math.PI / 2 - lineJ.getTheta());
+                    } else {
+                        if (lineI.getTheta() <= Math.PI / 4) {
+                            deltaI = Math.abs(Math.PI / 4 - lineI.getTheta());
+                        } else {
+                            deltaI = Math.abs(Math.PI - lineI.getTheta());
+                        }
+                        if (lineJ.getTheta() <= Math.PI / 4) {
+                            deltaJ = Math.abs(Math.PI / 4 - lineJ.getTheta());
+                        } else {
+                            deltaJ = Math.abs(Math.PI - lineJ.getTheta());
+                        }
+                    }
+                    if (deltaI > deltaJ) {
+                        linesToRemove[i] = true;
+                    } else {
+                        linesToRemove[j] = true;
+                    }
+                }
+            }
+        }
+        // Return lines that do not overlap each other in frame area
+        return lines;
+    }
+
+    /**
+     * Takes list of lines as input and calculates intersection points inside area X = [0, x]
+     * and Y = [0, Y].
+     *
+     * @param lines
+     * @param x
+     * @param y
+     */
+    public static List<Point> findIntersectionPoints(List<Line> lines, int x, int y) {
+        // Create list for intersection points
+        List<Point> intersectionPoints = new ArrayList<>();
+
+        // Create lists for vertical and horizontal lines
+        List<Line> vertical = new ArrayList<>();
+        List<Line> horizontal = new ArrayList<>();
+
+        // Iterate through all lines and group them to horizontal and vertical lines
+        for (Line line : lines) {
+            if (line.getTheta() >= Math.PI / 4 && line.getTheta() <= Math.PI / 4 * 3) {
+                vertical.add(line);     // line angle closer to vertical
+            } else {
+                horizontal.add(line);   // line angle closer to horizontal
+            }
+        }
+
+        // Calculate intersection
+        for (Line verticalLine : vertical) {
+            for (Line horizontalLine : horizontal) {
+                if (linesIntersectInArea(verticalLine, horizontalLine, x, y)) {
+                    Point intersection = findIntersectionPoint(verticalLine, horizontalLine);
+                    intersectionPoints.add(intersection);
+                }
+            }
+        }
+        return intersectionPoints;
+    }
+
+    /**
+     * Finds the intersection points for lines, then draws them on the Mat object
+     */
+    public static Mat drawIntersectionPointsTo4CMat(List<Point> intersections, Mat mat) {
+        // Draw points to mat
+        for(Point point : intersections) {
+            circle(mat, point, 8, new Scalar(255, 0, 0));
+        }
+        return mat;
     }
 
     /**

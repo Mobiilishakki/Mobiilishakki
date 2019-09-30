@@ -7,6 +7,7 @@ import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.util.Log;
 
+import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
 import java.io.ByteArrayOutputStream;
@@ -18,6 +19,7 @@ public class DataUtils {
     /**
      * Convert byte array to openCV Mat object.
      * The data should be NV21 encoded (android default for rear camera).
+     *
      * @param data
      * @param params
      * @return Mat
@@ -41,6 +43,19 @@ public class DataUtils {
         bmp = bmp.copy(Bitmap.Config.ARGB_8888, true);
         org.opencv.android.Utils.bitmapToMat(bmp, orig);
         return orig;
+    }
+
+    /**
+     * Convert Mat-object to Bitmap-object.
+     *
+     * @param mat
+     * @return Bitmap-object
+     */
+    public static Bitmap matToBitmapConversion(Mat mat) {
+        // Create bitmap of the edited frame
+        Bitmap bitmap = Bitmap.createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bitmap);
+        return bitmap;
     }
 
 }
