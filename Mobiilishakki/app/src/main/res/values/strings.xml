@@ -2,4 +2,5 @@
     <string name="app_name">Mobiilishakki</string>
     <string name="opencv_status_message">OpenCV status message</string>
     <string name="viewButtonText">Swap video settings</string>
+    <string name="take_picture">Take picture</string>
 </resources>
