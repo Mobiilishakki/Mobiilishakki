@@ -32,6 +32,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -166,6 +167,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     }
 
     protected void takePicture() {
+
         if (null == cameraDevice) {
             Log.e(TAG, "cameraDevice is null");
             return;
@@ -215,6 +217,8 @@ public class AndroidCameraApi extends AppCompatActivity {
                     } catch (IOException e){
 
                     }
+
+
                     /*
                     Image image = null;
                     try {
@@ -273,6 +277,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
 
     protected void createCameraPreview() {
         try {
@@ -396,6 +401,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             @Override
             public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
                 fileToSend.delete();
+                drawresult(bytes);
             }
 
             @Override
@@ -404,6 +410,13 @@ public class AndroidCameraApi extends AppCompatActivity {
             }
         });
     }
+
+    public void drawresult(byte[] bytes){
+        TextView textView = findViewById(R.id.img_result);
+        textView.setText("testing text"+bytes);
+        textView.setVisibility(View.VISIBLE);
+    }
+
 }
 
 

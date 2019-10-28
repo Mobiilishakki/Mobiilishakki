@@ -5,4 +5,5 @@
     <string name="take_picture">Take picture</string>
     <string name="menuExitButtonText">Exit</string>
     <string name="menuTitleTextView">Mobiilishakki</string>
+    <string name="img_result" />
 </resources>
