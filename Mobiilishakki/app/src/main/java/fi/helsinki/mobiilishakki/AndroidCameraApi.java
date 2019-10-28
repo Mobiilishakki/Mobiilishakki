@@ -25,6 +25,8 @@ import android.os.HandlerThread;
 // import android.support.v4.app.ActivityCompat;
 // import android.support.v7.app.AppCompatActivity;
 import android.preference.PreferenceActivity;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.TextToSpeechService;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -52,6 +54,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -61,6 +64,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private TextureView textureView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
+    private TextToSpeech kakka;
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
         ORIENTATIONS.append(Surface.ROTATION_90, 0);
@@ -94,6 +98,16 @@ public class AndroidCameraApi extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 takePicture();
+            }
+        });
+
+
+        kakka=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int i) {
+                if(i==TextToSpeech.SUCCESS) {
+                    kakka.setLanguage(Locale.ENGLISH);
+                }
             }
         });
     }
@@ -381,6 +395,8 @@ public class AndroidCameraApi extends AppCompatActivity {
 
 
     public void sendFile(final File fileToSend) {
+
+        kakka.speak("fuck this open c v programming", TextToSpeech.QUEUE_FLUSH, null);
 
         RequestParams params = new RequestParams();
         String url ="https://192.100.100.1:5000";
