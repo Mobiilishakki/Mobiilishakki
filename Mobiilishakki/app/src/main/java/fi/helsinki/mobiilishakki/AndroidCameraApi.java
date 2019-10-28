@@ -401,7 +401,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             @Override
             public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
                 fileToSend.delete();
-                drawresult(bytes);
+                drawResult(bytes);
             }
 
             @Override
@@ -411,10 +411,10 @@ public class AndroidCameraApi extends AppCompatActivity {
         });
     }
 
-    public void drawresult(byte[] bytes){
-        TextView textView = findViewById(R.id.img_result);
-        textView.setText("testing text"+bytes);
-        textView.setVisibility(View.VISIBLE);
+    public void drawResult(byte[] bytes){
+        TextView textView_res = findViewById(R.id.img_result);
+        textView_res.setText("testing text"+bytes);
+        textView_res.setVisibility(View.VISIBLE);
     }
 
 }
