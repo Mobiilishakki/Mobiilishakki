@@ -3,7 +3,10 @@ package fi.helsinki.mobiilishakki;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
+import android.graphics.ColorMatrixColorFilter;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -17,6 +20,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -24,9 +28,7 @@ import android.os.HandlerThread;
 // import android.support.annotation.NonNull;
 // import android.support.v4.app.ActivityCompat;
 // import android.support.v7.app.AppCompatActivity;
-import android.preference.PreferenceActivity;
 import android.speech.tts.TextToSpeech;
-import android.speech.tts.TextToSpeechService;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -34,6 +36,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,7 +52,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -65,7 +67,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private TextureView textureView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
-    private TextToSpeech kakka;
+    private TextToSpeech speaker;
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
         ORIENTATIONS.append(Surface.ROTATION_90, 0);
@@ -85,10 +87,11 @@ public class AndroidCameraApi extends AppCompatActivity {
     private boolean mFlashSupported;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
-
+    Intent intent;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         setContentView(R.layout.activity_main);
         textureView = (TextureView) findViewById(R.id.texture);
         assert textureView != null;
@@ -103,11 +106,11 @@ public class AndroidCameraApi extends AppCompatActivity {
         });
 
 
-        kakka=new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+        speaker =new TextToSpeech(this, new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int i) {
                 if(i==TextToSpeech.SUCCESS) {
-                    kakka.setLanguage(Locale.ENGLISH);
+                    speaker.setLanguage(Locale.ENGLISH);
                 }
             }
         });
@@ -180,7 +183,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }
 
-    protected void takePicture() {
+    public void takePicture() {
 
         if (null == cameraDevice) {
             Log.e(TAG, "cameraDevice is null");
@@ -193,8 +196,8 @@ public class AndroidCameraApi extends AppCompatActivity {
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            int width = 640;
-            int height = 480;
+            int width = 1920;
+            int height = 1080;
             if (jpegSizes != null && 0 < jpegSizes.length) {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
@@ -216,10 +219,18 @@ public class AndroidCameraApi extends AppCompatActivity {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
                     File fileToSend;
+
+                   // final File savedImage = new File(Environment.getExternalStorageDirectory()+"/tiedosto.jpg");
+
+
+
+         //           File savedImage=new File(AndroidCameraApi.super.getDataDir(), "TIEDOSTO");
+         //           System.out.println("LOKKI "+savedImage.getPath() );
                     Image image = null;
                     OutputStream output=null;
                     try {
-                        fileToSend = File.createTempFile("Chess", "jpg");
+                        fileToSend = File.createTempFile("Chess", ".jpg");
+
                         image = reader.acquireLatestImage();
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         byte[] bytes = new byte[buffer.capacity()];
@@ -227,10 +238,14 @@ public class AndroidCameraApi extends AppCompatActivity {
                         output.write(bytes);
                         output.close();
                         image.close();
+
+                       // intent.setData(Uri.fromFile(fileToSend));
+                       // sendBroadcast(intent);
                         sendFile(fileToSend);
                     } catch (IOException e){
 
                     }
+
 
 
                     /*
@@ -269,7 +284,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                 @Override
                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
-                    Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(AndroidCameraApi.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
                     createCameraPreview();
                 }
             };
@@ -399,32 +414,79 @@ public class AndroidCameraApi extends AppCompatActivity {
     }
 
 
+    public void speak(String line){
+
+        speaker.speak(line, TextToSpeech.QUEUE_FLUSH, null);
+    }
+
     public void sendFile(final File fileToSend) {
 
-        kakka.speak("fuck this open c v programming", TextToSpeech.QUEUE_FLUSH, null);
+       // File file = new File(this.getFilesDir(), "tiedosto");
+        //file = fileToSend;
 
+
+        showPicture(fileToSend);
+/*
         RequestParams params = new RequestParams();
-        String url ="https://192.100.100.1:5000";
+        String url ="http://94.237.117.223/upload";
 
         try {
-            params.put("chess", fileToSend);
+            params.put("file", fileToSend);
         } catch(FileNotFoundException e){
 
         }
+        System.out.println("JIIPEEGEE " +fileToSend.length() +" LOPPUOSA " + fileToSend.toString());
             // send request
         AsyncHttpClient client = new AsyncHttpClient();
+       // Toast.makeText(AndroidCameraApi.this, "testin vuoksi", Toast.LENGTH_LONG).show();
+        client.setTimeout(50000);
         client.post(url,params,new AsyncHttpResponseHandler(){
             @Override
             public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
                 fileToSend.delete();
-                drawResult(bytes);
+                System.out.println("MAKKARA");
+                String byt=new String(bytes);
+                String koo=headers.toString()+"__"+byt;
+                Toast.makeText(AndroidCameraApi.this, koo, Toast.LENGTH_LONG).show();
+                //drawResult("success");
             }
 
             @Override
             public void onFailure (int statusCode, Header[] headers, byte[] bytes, Throwable throwable){
                 System.out.println("KALAKALA");
+                //drawResult("fucked");
+                String byt=new String(bytes);
+                String koo=headers.toString()+"__"+byt;
+                Toast.makeText(AndroidCameraApi.this, "Fail "+ koo, Toast.LENGTH_LONG).show();
             }
-        });
+        });*/
+    }
+
+    public void showPicture(File picture)  {
+        this.textureView.setEnabled(false);
+        this.closeCamera();
+
+        //setContentView(R.layout.activity_menu);
+
+       float[] NEGATIVE = {
+                -1.0f,     0,     0,    0, 255, // red
+                0, -1.0f,     0,    0, 255, // green
+                0,     0, -1.0f,    0, 255, // blue
+                0,     0,     0, 1.0f,   0  // alpha
+        };
+        ImageView mImageView;
+
+        mImageView = (ImageView) findViewById(R.id.imageDisplay);
+        mImageView.setImageBitmap(BitmapFactory.decodeFile(picture.getAbsolutePath()));
+
+        mImageView.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
+        mImageView.setVisibility(View.VISIBLE);
+
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public void drawResult(byte[] bytes){
@@ -432,7 +494,11 @@ public class AndroidCameraApi extends AppCompatActivity {
         textView_res.setText("testing text"+bytes);
         textView_res.setVisibility(View.VISIBLE);
     }
-
+    public void drawResult(String text){
+        TextView textView_res = findViewById(R.id.img_result);
+        textView_res.setText(text);
+        textView_res.setVisibility(View.VISIBLE);
+    }
 }
 
 
