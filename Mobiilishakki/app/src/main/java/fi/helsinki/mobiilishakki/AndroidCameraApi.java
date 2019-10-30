@@ -53,6 +53,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -491,7 +492,13 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     public void drawResult(byte[] bytes){
         TextView textView_res = findViewById(R.id.img_result);
-        textView_res.setText("testing text"+bytes);
+        try {
+            String res = new String(bytes, "UTF-8");
+            textView_res.setText(res);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            textView_res.setText("ERROR");
+        }
         textView_res.setVisibility(View.VISIBLE);
     }
     public void drawResult(String text){
