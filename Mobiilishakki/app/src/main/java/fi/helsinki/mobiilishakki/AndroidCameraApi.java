@@ -32,6 +32,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +50,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -413,7 +415,13 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     public void drawResult(byte[] bytes){
         TextView textView_res = findViewById(R.id.img_result);
-        textView_res.setText("testing text"+bytes);
+        try {
+            String res = new String(bytes, "UTF-8");
+            textView_res.setText(res);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            textView_res.setText("ERROR");
+        }
         textView_res.setVisibility(View.VISIBLE);
     }
 
