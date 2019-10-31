@@ -3,8 +3,9 @@ package fi.helsinki.mobiilishakki;
 
 import android.Manifest;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.ImageFormat;
@@ -48,10 +49,14 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -88,13 +93,20 @@ public class AndroidCameraApi extends AppCompatActivity {
     private boolean mFlashSupported;
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
-    Intent intent;
+    private  ImageView mImageView;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         setContentView(R.layout.activity_main);
         textureView = (TextureView) findViewById(R.id.texture);
+
+
+        mImageView = (ImageView) findViewById(R.id.board_coord);
+
+
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
         takePictureButton = (Button) findViewById(R.id.btn_takepicture);
@@ -184,7 +196,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }
 
-    public void takePicture() {
+    protected void takePicture() {
 
         if (null == cameraDevice) {
             Log.e(TAG, "cameraDevice is null");
@@ -197,13 +209,13 @@ public class AndroidCameraApi extends AppCompatActivity {
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            int width = 1920;
-            int height = 1080;
+            int width = 640;
+            int height = 480;
             if (jpegSizes != null && 0 < jpegSizes.length) {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
             List<Surface> outputSurfaces = new ArrayList<Surface>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
@@ -219,34 +231,66 @@ public class AndroidCameraApi extends AppCompatActivity {
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
-                    File fileToSend;
 
-                   // final File savedImage = new File(Environment.getExternalStorageDirectory()+"/tiedosto.jpg");
-
-
-
-         //           File savedImage=new File(AndroidCameraApi.super.getDataDir(), "TIEDOSTO");
-         //           System.out.println("LOKKI "+savedImage.getPath() );
                     Image image = null;
                     OutputStream output=null;
-                    try {
-                        fileToSend = File.createTempFile("Chess", ".jpg");
 
+                   // ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                   // Bitmap bitmap;
+                    //bitmap = new Bitmap();
+                   // bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+//                    file = new File(Environment.getExternalStorageDirectory() + File.separator + "temporary_file.jpg");
+//                    try {
+//                        FileOutputStream fo = new FileOutputStream(file);
+//                        fo.write(bytes.toByteArray());
+//                        fo.flush();
+//                        fo.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+                    ByteArrayOutputStream byteoutput =null;
+                    BufferedWriter bufferedWriter=null;
+                    File fileToSend =null;
+                    try {
+
+                        System.out.println("eka");
                         image = reader.acquireLatestImage();
+                        System.out.println("toka");
+                        fileToSend = File.createTempFile("Chess",".jpg");
+                        System.out.println("kolmas");
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+
                         byte[] bytes = new byte[buffer.capacity()];
+
+                        buffer.rewind();
+                        buffer.get(bytes);
+                        //System.out.println("viides");
+                        //byte[] bytes = buffer.array();
+
+
+                       // buffer.get(bytes);
+
+
+                       // bufferedWriter = new BufferedWriter(new FileWriter(fileToSend, false));
+                       // bufferedWriter.write(buffer.asCharBuffer().array());
+
+
+
+
+
                         output = new FileOutputStream(fileToSend);
                         output.write(bytes);
+                        output.flush();
                         output.close();
+
                         image.close();
 
-                       // intent.setData(Uri.fromFile(fileToSend));
-                       // sendBroadcast(intent);
+                        System.out.println("PERKEL "+fileToSend.getTotalSpace());
                         sendFile(fileToSend);
-                    } catch (IOException e){
+                    } catch (Exception e){
+                        e.printStackTrace();
 
                     }
-
 
 
                     /*
@@ -420,20 +464,22 @@ public class AndroidCameraApi extends AppCompatActivity {
         speaker.speak(line, TextToSpeech.QUEUE_FLUSH, null);
     }
 
-    public void sendFile(final File fileToSend) {
+    public void sendFile(File fileToSend) {
 
        // File file = new File(this.getFilesDir(), "tiedosto");
         //file = fileToSend;
+      //  System.out.println("KOKOKO "+fileToSend.length);
+
+//       showPicture(fileToSend);
 
 
-        showPicture(fileToSend);
-/*
         RequestParams params = new RequestParams();
         String url ="http://94.237.117.223/upload";
+//        String url ="http://192.168.42.113/upload";
 
         try {
             params.put("file", fileToSend);
-        } catch(FileNotFoundException e){
+        } catch(Exception e){
 
         }
         System.out.println("JIIPEEGEE " +fileToSend.length() +" LOPPUOSA " + fileToSend.toString());
@@ -444,7 +490,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         client.post(url,params,new AsyncHttpResponseHandler(){
             @Override
             public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
-                fileToSend.delete();
+                //fileToSend.delete();
                 System.out.println("MAKKARA");
                 String byt=new String(bytes);
                 String koo=headers.toString()+"__"+byt;
@@ -460,10 +506,12 @@ public class AndroidCameraApi extends AppCompatActivity {
                 String koo=headers.toString()+"__"+byt;
                 Toast.makeText(AndroidCameraApi.this, "Fail "+ koo, Toast.LENGTH_LONG).show();
             }
-        });*/
+        });
     }
 
-    public void showPicture(File picture)  {
+    public void showPicture(File picture){
+
+        /*
         this.textureView.setEnabled(false);
         this.closeCamera();
 
@@ -475,19 +523,40 @@ public class AndroidCameraApi extends AppCompatActivity {
                 0,     0, -1.0f,    0, 255, // blue
                 0,     0,     0, 1.0f,   0  // alpha
         };
-        ImageView mImageView;
 
-        mImageView = (ImageView) findViewById(R.id.imageDisplay);
-        mImageView.setImageBitmap(BitmapFactory.decodeFile(picture.getAbsolutePath()));
+        */
+      //  File chess=new File(getDataDir()+"/chess.jpg");
 
-        mImageView.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
-        mImageView.setVisibility(View.VISIBLE);
 
+        //System.out.println("CHESSCHESS " + chess.exists());
+
+
+    //    ImageView mImageView;
+
+    //    mImageView = (ImageView) findViewById(R.id.board_coord);
+        //mImageView.setImageBitmap(BitmapFactory.decodeFile(chess.getAbsolutePath()));
+
+        AssetManager assetManager = getAssets();
+        InputStream is = null;
         try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
+            is = assetManager.open("chess.jpg");
+        } catch (IOException e) {
             e.printStackTrace();
         }
+        mImageView.setImageBitmap(BitmapFactory.decodeStream(is));
+
+
+
+ //       this.runOnUiThread(java.lang.Runnable{
+ //           mImageView.setImageBitmap(BitmapFactory.decodeStream(is))
+ //       });
+
+
+
+    //mImageView.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
+        mImageView.setVisibility(View.VISIBLE);
+
+
     }
 
     public void drawResult(byte[] bytes){
@@ -506,6 +575,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         textView_res.setText(text);
         textView_res.setVisibility(View.VISIBLE);
     }
+
 }
 
 
