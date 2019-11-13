@@ -7,8 +7,9 @@ import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ColorMatrixColorFilter;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -21,15 +22,14 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 // import android.support.annotation.NonNull;
 // import android.support.v4.app.ActivityCompat;
 // import android.support.v7.app.AppCompatActivity;
 import android.speech.tts.TextToSpeech;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
@@ -37,6 +37,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,9 +53,7 @@ import com.loopj.android.http.RequestParams;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -71,6 +70,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private static final String TAG = "AndroidCameraApi";
     private Button takePictureButton;
     private TextureView textureView;
+    private DrawView drawView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
     private TextToSpeech speaker;
@@ -81,12 +81,18 @@ public class AndroidCameraApi extends AppCompatActivity {
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
 
+    private int DSI_height;
+    private int DSI_width;
+    int cameraPictureWidth = 1800;
+    int cameraPictureHeight = 2800;
+
+
     private String cameraId;
     protected CameraDevice cameraDevice;
     protected CameraCaptureSession cameraCaptureSessions;
     protected CaptureRequest captureRequest;
     protected CaptureRequest.Builder captureRequestBuilder;
-    private Size imageDimension;
+
     private ImageReader imageReader;
     private File file;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
@@ -95,13 +101,21 @@ public class AndroidCameraApi extends AppCompatActivity {
     private HandlerThread mBackgroundThread;
     private  ImageView mImageView;
 
-
+    private Size imageDimension;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+
         textureView = (TextureView) findViewById(R.id.texture);
+
+        drawView=(DrawView) findViewById(R.id.drawView);
+
+        drawView.setZ(100);
+
 
 
         mImageView = (ImageView) findViewById(R.id.board_coord);
@@ -127,18 +141,41 @@ public class AndroidCameraApi extends AppCompatActivity {
                 }
             }
         });
+
+
+    }
+
+    private void setAspectRatioTextureView(int ResolutionWidth , int ResolutionHeight )
+    {
+        if(ResolutionWidth > ResolutionHeight){
+            int newWidth = DSI_width;
+            int newHeight = ((DSI_width * ResolutionWidth)/ResolutionHeight);
+            updateTextureViewSize(newWidth,newHeight);
+
+        }else {
+            int newWidth = DSI_width;
+            int newHeight = ((DSI_width * ResolutionHeight)/ResolutionWidth);
+            updateTextureViewSize(newWidth,newHeight);
+        }
+
+    }
+
+    private void updateTextureViewSize(int viewWidth, int viewHeight) {
+        Log.d(TAG, "TextureView Width : " + viewWidth + " TextureView Height : " + viewHeight);
+        textureView.setLayoutParams(new FrameLayout.LayoutParams(viewWidth, viewHeight));
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             //open your camera here
+
             openCamera();
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            // Transform you image captured size according to the surface width and height
+            // Transform you image captured size according to the surface cameraPictureWidth and cameraPictureHeight
         }
 
         @Override
@@ -209,13 +246,15 @@ public class AndroidCameraApi extends AppCompatActivity {
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            int width = 1800;
-            int height = 2800;
+
             if (jpegSizes != null && 0 < jpegSizes.length) {
-                width = jpegSizes[0].getWidth();
-                height = jpegSizes[0].getHeight();
+                cameraPictureWidth = jpegSizes[0].getWidth();
+                cameraPictureHeight = jpegSizes[0].getHeight();
             }
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
+
+            ImageReader reader = ImageReader.newInstance(cameraPictureWidth, cameraPictureHeight, ImageFormat.JPEG, 2);
+            //ImageReader reader = ImageReader.newInstance(cameraPictureWidth, cameraPictureHeight, ImageFormat.RAW12, 2);
+
             List<Surface> outputSurfaces = new ArrayList<Surface>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
@@ -254,16 +293,23 @@ public class AndroidCameraApi extends AppCompatActivity {
                     try {
 
                         System.out.println("eka");
+
                         image = reader.acquireLatestImage();
                         System.out.println("toka");
                         fileToSend = File.createTempFile("Chess",".jpg");
                         System.out.println("kolmas");
+
+                        //cropImage(image);                                                   // New rectagle CROP
+
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
 
                         byte[] bytes = new byte[buffer.capacity()];
 
                         buffer.rewind();
                         buffer.get(bytes);
+
+
+
                         //System.out.println("viides");
                         //byte[] bytes = buffer.array();
 
@@ -275,18 +321,47 @@ public class AndroidCameraApi extends AppCompatActivity {
                        // bufferedWriter.write(buffer.asCharBuffer().array());
 
 
+                        //Bitmap bitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+
+
 
 
 
                         output = new FileOutputStream(fileToSend);
+                        //bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, output);
+                        //cropImage(bitmapImage).compress(Bitmap.CompressFormat.JPEG, 100, output);
+
+
                         output.write(bytes);
                         output.flush();
                         output.close();
 
+
+
+                        // BitmapFactory.Options options = new BitmapFactory.Options();
+                       // options.inJustDecodeBounds = true;
+                        Bitmap bitmapImage=BitmapFactory.decodeFile(fileToSend.getAbsolutePath());
+
+
+
+                        File fileToSend2 = File.createTempFile("Chess2",".jpg");
+                        OutputStream output2=new FileOutputStream(fileToSend2);
+                        bitmapImage=cropImage90(bitmapImage);
+
+                        bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, output2);
+
                         image.close();
+                        bitmapImage.recycle();
+
+                        output2.flush();
+                        output2.close();
 
                         System.out.println("PERKEL "+fileToSend.getTotalSpace());
-                        sendFile(fileToSend);
+                        sendFile(fileToSend2);
+
+
+
+
                     } catch (Exception e){
                         e.printStackTrace();
 
@@ -397,6 +472,12 @@ public class AndroidCameraApi extends AppCompatActivity {
                 ActivityCompat.requestPermissions(AndroidCameraApi.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
                 return;
             }
+
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+            DSI_height = displayMetrics.heightPixels;
+            DSI_width = displayMetrics.widthPixels;
+            setAspectRatioTextureView(imageDimension.getHeight(),imageDimension.getWidth());
             manager.openCamera(cameraId, stateCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -409,11 +490,69 @@ public class AndroidCameraApi extends AppCompatActivity {
             Log.e(TAG, "updatePreview error, return");
         }
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
         try {
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+    }
+
+    public void cropImage(Image orig){
+        Rect rect=new Rect(drawView.topLeft().x,drawView.topLeft().y,drawView.bottomRight().x,drawView.bottomRight().y);
+        System.out.println("WWEWEWWEWEWEWE left "+drawView.topLeft().x+" top "+drawView.topLeft().y+" right "+drawView.bottomRight().x+" bottom "+drawView.bottomRight().y);
+        orig.setCropRect(rect);
+
+    }
+
+    // Crops bitmap based on drawView points
+    public Bitmap cropImage(Bitmap bitmap){
+
+        float ratio=(float) cameraPictureWidth /(float)DSI_width;
+        float topleftx=ratio * (float)drawView.topLeft().x;
+        float toplefty=ratio * (float)drawView.topLeft().y;
+        float width = ratio * (float)(drawView.topRight().x - drawView.topLeft().x);
+        float height= ratio * (float)(drawView.bottomLeft().y - drawView.topLeft().y);
+
+        return Bitmap.createBitmap(bitmap, (int)topleftx, (int)toplefty, (int)width, (int)height); //, matrix, true);
+
+    }
+
+    // Crops bitmaps that are horizontal, and transforms bitmaps to vertical.
+    // Takes coordinates from drawView that are correct on the original vertical picture
+    // so it uses them in a way that is correct in horizontal bitmap
+    public Bitmap cropImage90(Bitmap bitmap){
+
+        System.out.println("ÄXÄ "+drawView.topLeft().x+"YXY "+drawView.topLeft().y +" TOKA X "+drawView.bottomRight().x+" TOKE Y "+drawView.bottomRight().y);
+        float ratio2=(float) cameraPictureWidth  /(float)DSI_height;
+        float ratio=(float) cameraPictureHeight/(float)DSI_width;
+        System.out.println(" camwidth "+cameraPictureWidth+"  camheight "+cameraPictureHeight +"  DSIwidth "+DSI_width+"  DSIheight "+DSI_height);
+        System.out.println(" RATIORATIO "+ ratio2+ "  RATIO width "+ratio);
+        float topLeftX,topLeftY,bottomRightX,bottomRightY;
+        topLeftX=ratio * (float)drawView.topLeft().x;
+        topLeftY=ratio * (float)drawView.topLeft().y;
+        bottomRightX=ratio * (float)drawView.bottomRight().x;
+        bottomRightY=ratio * (float)drawView.bottomRight().y;
+
+
+        int rotatedTopLeftX=(int)topLeftY;
+        int rotatedTopLeftY=(int)(cameraPictureHeight-bottomRightX);
+        int rotatedBottomRightX=(int)bottomRightY;
+        int rotatedBottomRightY=(int)(cameraPictureHeight-topLeftX);
+        int height=rotatedBottomRightY-rotatedTopLeftY;
+        int width=rotatedBottomRightX-rotatedTopLeftX;
+
+        System.out.println(" RTLX "+rotatedTopLeftX+" RTLY "+rotatedTopLeftY+" RBRX "+rotatedBottomRightX
+                + " RBRY "+rotatedBottomRightY+" weight "+height+" width "+width);
+        System.out.println(" DSL Height "+DSI_height + " DSL WIDTH "+DSI_width + " cameraPictureWidth "+width+" hieght " + height);
+        System.out.println("Äksä "+rotatedTopLeftX + " YYYY " + rotatedTopLeftY+ " LEVEYS " +width + " KORKEUS " + height);
+
+
+        Matrix matrix = new Matrix();
+
+        matrix.postRotate(90);
+        return Bitmap.createBitmap(bitmap, rotatedTopLeftX,rotatedTopLeftY, width, height, matrix, true);
+
     }
 
     private void closeCamera() {

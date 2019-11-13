@@ -39,9 +39,9 @@ public class ChessboardAnalyzer implements Runnable {
     private Camera.Parameters cameraParams;
     // Flag for board detection status
     private boolean boardDetected;
-    // Frame width
+    // Frame cameraPictureWidth
     private int frameWidth;
-    // Frame height
+    // Frame cameraPictureHeight
     private int frameHeight;
 
     @Override
