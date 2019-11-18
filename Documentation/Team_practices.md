@@ -13,6 +13,5 @@ Team members should inform other members if they can't attend to agreed appointm
 
 ### Definition of Done:
  * Fulfils the requirement of the user story
- * Contains test for the new features
- * And passes all the tests, travis checks 
+ * Works verifiably as intended
  

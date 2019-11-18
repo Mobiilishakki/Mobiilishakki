@@ -11,5 +11,6 @@
     * Simulated exercises
 * iPhone app
 * User accounts
-    * Plan functionality / features
+    * Design functionality / features
+* Move to actual board recognision from the crop / user calibrated solution
 * 

@@ -9,7 +9,7 @@ Other problems arise from finding the colors of the pieces and dividing them bas
 Because of these problems, using machine learning to teach a model to recoqnize the pieces seems most plausible, as it solves both of the problems at the same time, and recoqnizes each piece individually, which was unfeasible by the other methods.
 
 
-# Recognizing Board
+### Recognizing Board
 Recognizing the chess board was one of the most critical steps of the project and many hours of work has been invested to it. Howerver, even after all the effort, we could not find a general solution that would work recognize different kind of chess boards. We were able to recognize our test board in some cases but the error rate was too high to call it a success. There were no specific reason, why the board recognition did not work. Instead it was more of a sum of multiple small issues caused by variation in environment and hardware.
 
 Our approach was the following (after many hours of testing and dead ends):
@@ -32,3 +32,13 @@ Enviromental properties also have a huge impact to the detection algorithms. For
 We also had problems with handling the detected lines. OpenCV uses polar coordinate system (rho, theta) for representing lines and this caused some unexpected bugs when trying to filter irrelevant lines. Lines that seemed to be similar together actually had a angle (theta) difference of pi and rho value something totally different.
 
 Filtering the irrelevant lines was also hard. HoughLines detects many lines that are needed and it might faile with lines that are actually relevant. There is no way to be 100% sure that some detected line is or is not actually a chess board grid line .
+
+Currently the problems with board recognision are circumvented by having the user to crop the chess board from the phone view with a selector. Sending cropped picture to the server means the image can be analyzed as is without having to process it, which also decrease processing time on the server.
+In future a proper board recognision functionality could be added, provided enough resources and knowledge.
+
+### Android & Android Studio
+todo
+
+## Related Material
+* https://web.stanford.edu/class/cs231a/prev_projects_2016/CS_231A_Final_Report.pdf
+* https://arxiv.org/pdf/1708.03898.pdf

@@ -1,18 +1,25 @@
 # Mobiilishakki
 
+## Basic Program Flow
+1. Picture is taken using the phone app and send to server
+2. Server process the picture and gives fenn-notation of board
+3. Web-app access the server and shows user the board state & required move
+
 
 ## Smartphone app (Android)
-Used to take pictures of the board from an overhead view and sending them to the server for processing. Set to stationary position using a stand. Set-up at the start of the game: stand position, calibrating board, etc. After being set shouldn't require any further actions from the player for comfortable user experience. All further promts and feedback should be sent through web-app.
+Used to take pictures of the board from an overhead view and sending them to the server for processing. Set to stationary position using a stand. Set-up at the start of the game: stand position, calibrating board, etc. 
+After being set shouldn't require any further actions from the player for comfortable user experience. All further promts and feedback should be sent through web-app.
 
 Should contain only the minimum required features for sending pictures of the game to server and set-up. For easier integration between different platforms (Android, iPhone, ...) the mobile app should be as simple as possible as all processing is done over the server.
 
+Based on Java at the moment.
 
-## [Server](https://github.com/Mobiilishakki/Shakkipalvelin)
+## [Server](https://github.com/Mobiilishakki/Shakkipalvelin) ([Docker](https://hub.docker.com/r/mshakki/chesscaffe))
 Responsible for the recognising the board and pieces using computer vision and machine learning, updating game state for phone and web apps, saving replay data & statistics, and managing user information & authentication.
 
 Sent images are first processed using OpenCV computer vision library, and then processed using machine learning to find correct pieces and coordinates form the picture to keep track of the game state accurately. Used machine learning framework is Pytorch.
 
-Game states, replay data, and user information are saved using postgresql. 
+Game states, replay data, and user information are saved to postgreSQL database. 
 
 The server and database are build to their own modular docked containers for easy to deployment, use and expansion if needed.
 
