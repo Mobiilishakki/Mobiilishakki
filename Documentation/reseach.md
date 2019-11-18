@@ -9,8 +9,8 @@ Other problems arise from finding the colors of the pieces and dividing them bas
 Because of these problems, using machine learning to teach a model to recoqnize the pieces seems most plausible, as it solves both of the problems at the same time, and recoqnizes each piece individually, which was unfeasible by the other methods.
 
 
-### Recognizing Board
-Recognizing the chess board was one of the most critical steps of the project and many hours of work has been invested to it. Howerver, even after all the effort, we could not find a general solution that would work recognize different kind of chess boards. We were able to recognize our test board in some cases but the error rate was too high to call it a success. There were no specific reason, why the board recognition did not work. Instead it was more of a sum of multiple small issues caused by variation in environment and hardware.
+# Recognizing Board
+Recognizing the chess board was one of the most critical steps of the project and many hours of work has been invested to it. Howerver, even after all the effort, we could not find a general solution that would work on different kind of chess boards. We were able to recognize our test board in some cases but the error rate was too high to call it a success. There were no specific reason, why the board recognition did not work. Instead the failure was caused by a sum of multiple small issues.
 
 Our approach was the following (after many hours of testing and dead ends):
 1. Blur the image to reduce the number of edges that can be detected from image containing the board. This was achieved by using OpenCV's blur-function.
