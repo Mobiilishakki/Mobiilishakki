@@ -10,7 +10,7 @@ Should contain only the minimum required features for sending pictures of the ga
 ## [Server](https://github.com/Mobiilishakki/Shakkipalvelin)
 Responsible for the recognising the board and pieces using computer vision and machine learning, updating game state for phone and web apps, saving replay data & statistics, and managing user information & authentication.
 
-Sent images are first processed using OpenCV computer vision library, and then processed using machine learning to find correct pieces and coordinates form the picture to keep track of the game state accurately. Currently used framework is the now depracated Caffe, but it can be moved to Pytorch in the future.
+Sent images are first processed using OpenCV computer vision library, and then processed using machine learning to find correct pieces and coordinates form the picture to keep track of the game state accurately. Used machine learning framework is Pytorch.
 
 Game states, replay data, and user information are saved using postgresql. 
 
