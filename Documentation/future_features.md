@@ -2,6 +2,9 @@
 # Features to be implemented & ideas for future
 
 * Functionality for handling unique game instances for different players
+* Validation for moves
+    * Not saving illegal moves
+    * Warning player of illegal moves
 * User can train the model for new boards & pieces from the app.
 * User can also play against computers and other players through some internet chess engine/service
     * Stockfish is GPL and thus out of scope -> research & consider other options
@@ -14,6 +17,14 @@
 * iPhone app
 * User accounts
     * Design functionality / features
+    * Implement (phone app & Web-app)
 * Move to actual board recognision from the crop / user calibrated solution
 * Saving data / pictures automatically from all games and using them to improve the machine learning model continously
-* 
+* Playing only using phone app?
+    * Own UI & other functionality
+    * possible tools: https://github.com/bakkenbaeck/chessboardeditor
+* Handling raising units
+    * What if not enough unique pieces? Ex. Trying to raise Pawn to Queen, but no extra Queen pieces.
+    * Input from player? But what about discepancy with model?
+* Nicer UI & Graphics
+
