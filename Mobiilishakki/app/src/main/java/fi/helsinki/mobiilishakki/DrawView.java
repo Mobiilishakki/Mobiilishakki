@@ -19,7 +19,7 @@ import android.view.View;
 
 public class DrawView extends View {
 
-    Point[] points = new Point[4];
+    Point[] points = new Point[8];
 
     /**
      * point1 and point 3 are of same group and same as point 2 and point4
@@ -31,12 +31,19 @@ public class DrawView extends View {
     // variable to know what ball is being dragged
     Paint paint;
     Canvas canvas;
+    boolean firstMove=true;
+    boolean afterReset=true;
+    Point centralPoint;
 
     public DrawView(Context context) {
         super(context);
         paint = new Paint();
         setFocusable(true); // necessary for getting the touch events
         canvas = new Canvas();
+
+        ColorBall.canvasHeight=canvas.getHeight();
+        ColorBall.canvasWidth=canvas.getWidth();
+
     }
 
     public DrawView(Context context, AttributeSet attrs, int defStyle) {
@@ -48,6 +55,8 @@ public class DrawView extends View {
         paint = new Paint();
         setFocusable(true); // necessary for getting the touch events
         canvas = new Canvas();
+        ColorBall.canvasHeight=canvas.getHeight();
+        ColorBall.canvasWidth=canvas.getWidth();
 
     }
 
@@ -109,9 +118,9 @@ public class DrawView extends View {
 
             colorballs.get(i).getDrawable().draw(canvas);
 
-            if(i<colorballs.size()-1){
+            if(i<3){
                 drawLine(colorballs.get(i).point,colorballs.get(i+1).point,canvas,paint,colorballs.get(0).getHeightOfBall());
-            } else {
+            } else if (i==3){
                 drawLine(colorballs.get(i).point,colorballs.get(0).point,canvas,paint,colorballs.get(0).getHeightOfBall());
             }
 
@@ -158,10 +167,14 @@ public class DrawView extends View {
                 // a ball
                 if (points[0] == null) {
                     //initialize rectangle.
-                    points[0] = new Point();
-                    points[1] = new Point();
-                    points[2] = new Point();
-                    points[3] = new Point();
+
+                    for(int x=0;x<8;x++){
+                        points[x]=new Point();
+                    }
+                 //   points[0] = new Point();
+                 //   points[1] = new Point();
+                 //   points[2] = new Point();
+                 //   points[3] = new Point();
 
                     points[0].x = X;
                     points[0].y = Y;
@@ -187,18 +200,38 @@ public class DrawView extends View {
                     }
 
 
+                    points[4].x=(points[0].x+points[3].x)/2;
+                    points[4].y=(points[0].y+points[3].y)/2;
+
+                    points[5].x=(points[3].x+points[2].x)/2;
+                    points[5].y=(points[3].y+points[2].y)/2;
+
+                    points[6].x=(points[2].x+points[1].x)/2;
+                    points[6].y=(points[2].y+points[1].y)/2;
 
 
+                    points[7].x=(points[1].x+points[0].x)/2;
+                    points[7].y=(points[1].y+points[0].y)/2;
 
+
+                    int centerBallY=(points[0].y+points[1].y+points[2].y+points[3].y)/4;
+                    int centerBallX=(points[0].x+points[1].x+points[2].x+points[3].x)/4;
+
+                    centralPoint=new Point(centerBallX, centerBallY);
 
 
                     balID = 2;
                     groupId = 1;
+                    afterReset=false;
                     // declare each ball with the ColorBall class
-                    for (Point pt : points) {
+                    for (int x=0;x<4;x++) {
 
-                        colorballs.add(new ColorBall(getContext(), R.drawable.circle, pt));// R.drawable.ic_circle, pt));
+                        colorballs.add(new ColorBall(getContext(), R.drawable.circle, points[x]));// R.drawable.ic_circle, pt));
                     }
+                    for(int x=4;x<points.length;x++){
+                        colorballs.add(new ColorBall(getContext(), R.drawable.circle2, points[x]));
+                    }
+                    colorballs.add(new ColorBall(getContext(), R.drawable.circle2, centralPoint));
 
                 } else {
                     //resize rectangle
@@ -221,13 +254,25 @@ public class DrawView extends View {
                                 .sqrt((double) (((centerX - X) * (centerX - X)) + (centerY - Y)
                                         * (centerY - Y)));
 
-                        if (radCircle < ball.getWidthOfBall()*1.5) {
+                        double multiplier=1.6;
+                        if(ball.getID()>3){
+                            multiplier=2;
+                        }
+                        if (radCircle < ball.getWidthOfBall()*multiplier) {
 
                             balID = ball.getID();
+                            if(balID==8){
+                                reset();
+                                invalidate();
+                                break;
+                            }
                             if (balID == 1 || balID == 3) {
                                 groupId = 2;
-                            } else {
+                            } else if (balID == 0 || balID==2){
                                 groupId = 1;
+                                firstMove=false;
+                            } else {
+                                groupId=balID;
                             }
                             invalidate();
                             break;
@@ -240,25 +285,68 @@ public class DrawView extends View {
             case MotionEvent.ACTION_MOVE: // touch drag with the ball
 
 
-                if (balID > -1) {
+                if (balID > -1 && !afterReset) {
                     // move the balls the same as the finger
                     colorballs.get(balID).setX(X);
                     colorballs.get(balID).setY(Y);
 
                     paint.setColor(Color.CYAN);
 
-                    if (groupId == 1) {
-                        colorballs.get(1).setX(colorballs.get(0).getX());
-                        colorballs.get(1).setY(colorballs.get(2).getY());
-                        colorballs.get(3).setX(colorballs.get(2).getX());
-                        colorballs.get(3).setY(colorballs.get(0).getY());
-                    } else {
-                        colorballs.get(0).setX(colorballs.get(1).getX());
-                        colorballs.get(0).setY(colorballs.get(3).getY());
-                        colorballs.get(2).setX(colorballs.get(3).getX());
-                        colorballs.get(2).setY(colorballs.get(1).getY());
+                    if(firstMove) {
+
+                        if (groupId == 1) {
+                            colorballs.get(1).setX(colorballs.get(0).getX());
+                            colorballs.get(1).setY(colorballs.get(2).getY());
+                            colorballs.get(3).setX(colorballs.get(2).getX());
+                            colorballs.get(3).setY(colorballs.get(0).getY());
+                        }
+
+                        if (groupId == 2) {
+                            colorballs.get(0).setX(colorballs.get(1).getX());
+                            colorballs.get(0).setY(colorballs.get(3).getY());
+                            colorballs.get(2).setX(colorballs.get(3).getX());
+                            colorballs.get(2).setY(colorballs.get(1).getY());
+                        }
                     }
 
+                    if(groupId==4){
+                        int differY=(colorballs.get(0).getY()-colorballs.get(3).getY())/2;
+                        colorballs.get(0).setY(colorballs.get(4).getY()+differY);
+                        colorballs.get(3).setY(colorballs.get(4).getY()-differY);
+                    }
+                    if(groupId==5){
+                        int differX=(colorballs.get(3).getX()-colorballs.get(2).getX())/2;
+                        colorballs.get(3).setX(colorballs.get(5).getX()+differX);
+                        colorballs.get(2).setX(colorballs.get(5).getX()-differX);
+                    }
+                    if(groupId==6){
+                        int differY=(colorballs.get(1).getY()-colorballs.get(2).getY())/2;
+                        colorballs.get(1).setY(colorballs.get(6).getY()+differY);
+                        colorballs.get(2).setY(colorballs.get(6).getY()-differY);
+                    }
+                    if(groupId==7){
+                        int differX=(colorballs.get(0).getX()-colorballs.get(1).getX())/2;
+                        colorballs.get(0).setX(colorballs.get(7).getX()+differX);
+                        colorballs.get(1).setX(colorballs.get(7).getX()-differX);
+                    }
+
+                    colorballs.get(4).setX((colorballs.get(0).getX()+colorballs.get(3).getX())/2);
+                    colorballs.get(4).setY((colorballs.get(0).getY()+colorballs.get(3).getY())/2);
+                    colorballs.get(5).setX((colorballs.get(3).getX()+colorballs.get(2).getX())/2);
+                    colorballs.get(5).setY((colorballs.get(3).getY()+colorballs.get(2).getY())/2);
+                    colorballs.get(6).setX((colorballs.get(2).getX()+colorballs.get(1).getX())/2);
+                    colorballs.get(6).setY((colorballs.get(2).getY()+colorballs.get(1).getY())/2);
+                    colorballs.get(7).setX((colorballs.get(1).getX()+colorballs.get(0).getX())/2);
+                    colorballs.get(7).setY((colorballs.get(1).getY()+colorballs.get(0).getY())/2);
+
+
+                    int centerY=0,centerX=0;
+                    for(int x=0;x<4;x++){
+                        centerX+=colorballs.get(x).getX();
+                        centerY+=colorballs.get(x).getY();
+                    }
+                    colorballs.get(8).setX(centerX/4);
+                    colorballs.get(8).setY(centerY/4);
                     invalidate();
                 }
 
@@ -274,6 +362,17 @@ public class DrawView extends View {
 
         return true;
 
+    }
+
+    public void reset(){
+        for(int x=0;x<points.length;x++)
+            points[x]=null;
+        this.colorballs.clear();
+        this.firstMove=true;
+        this.groupId=-1;
+        this.balID=-0;
+        afterReset=true;
+        ColorBall.count=0;
     }
 
     public Point topLeft(){
@@ -322,6 +421,7 @@ public class DrawView extends View {
 
         Bitmap bitmap;
         Context mContext;
+      static  public int canvasWidth,canvasHeight;
         Point point;
         int id, width, height;
         private Drawable ball;
@@ -352,8 +452,9 @@ public class DrawView extends View {
             this.point = point;
             updateBounds();
         }
-
-        public void updateBounds(){
+        
+        
+            public void updateBounds(){
             left=point.x-width/2;
             right=left+width;
             top=point.y-height/2;
@@ -390,12 +491,21 @@ public class DrawView extends View {
         }
 
         public void setX(int x) {
-            point.x = x;
+
+ /*           if(x<0)
+                x=0;
+            if(x>ColorBall.canvasWidth)
+                x=ColorBall.canvasWidth;
+ */           point.x = x;
             updateBounds();
         }
 
         public void setY(int y) {
-            point.y = y;
+  /*          if(y<0)
+                y=0;
+            if(y>ColorBall.canvasHeight)
+                y=ColorBall.canvasHeight;
+   */         point.y = y;
             updateBounds();
         }
     }

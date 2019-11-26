@@ -37,6 +37,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -82,10 +83,11 @@ public class AndroidCameraApi extends AppCompatActivity {
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
 
-    private int DSI_height;
-    private int DSI_width;
-    int cameraPictureWidth = 1800;
-    int cameraPictureHeight = 2800;
+    private int DSI_height=0;
+    private int DSI_width=0;
+
+    int cameraPictureWidth = 0;
+    int cameraPictureHeight = 0;
 
 
     private String cameraId;
@@ -119,12 +121,14 @@ public class AndroidCameraApi extends AppCompatActivity {
 
 
 
+
         mImageView = (ImageView) findViewById(R.id.board_coord);
 
 
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
         takePictureButton = (Button) findViewById(R.id.btn_takepicture);
+        takePictureButton.setZ(101);
         assert takePictureButton != null;
         takePictureButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -164,6 +168,10 @@ public class AndroidCameraApi extends AppCompatActivity {
     private void updateTextureViewSize(int viewWidth, int viewHeight) {
         Log.d(TAG, "TextureView Width : " + viewWidth + " TextureView Height : " + viewHeight);
         textureView.setLayoutParams(new FrameLayout.LayoutParams(viewWidth, viewHeight));
+
+        ViewGroup.LayoutParams params=drawView.getLayoutParams();
+        params.height=viewHeight;
+        drawView.setLayoutParams(params);
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -444,6 +452,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 
 
+
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
@@ -544,15 +553,114 @@ public class AndroidCameraApi extends AppCompatActivity {
     // Crops bitmap based on drawView points
     public Bitmap cropImage(Bitmap bitmap){
 
-        float ratio=(float) cameraPictureWidth /(float)DSI_width;
+        if(DSI_height==0|this.DSI_width==0|this.cameraPictureHeight==0|this.cameraPictureWidth==0)
+            System.out.println("SOMETHING WENT WRONG");
+
+
+        float ratioWidth=(float) bitmap.getWidth() /(float)DSI_width;
+        float ratioHeight=(float) bitmap.getHeight() /(float)DSI_height;
+        float ratio;
+        if(ratioHeight<ratioWidth)
+            ratio=ratioHeight;
+        else
+            ratio=ratioWidth;
+
         float topleftx=ratio * (float)drawView.topLeft().x;
         float toplefty=ratio * (float)drawView.topLeft().y;
-        float width = ratio * (float)(drawView.topRight().x - drawView.topLeft().x);
-        float height= ratio * (float)(drawView.bottomLeft().y - drawView.topLeft().y);
+        float toprightx=ratio * (float)drawView.topRight().x;
+        float toprighty=ratio * (float)drawView.topRight().y;
+        float bottomleftx=ratio * (float)drawView.bottomLeft().x;
+        float bottomlefty=ratio * (float)drawView.bottomLeft().y;
+        float bottomrightx=ratio * (float)drawView.bottomRight().x;
+        float bottomrighty=ratio * (float)drawView.bottomRight().y;
+
+
+        float width = toprightx-topleftx;
+        float height= bottomlefty-toplefty;
 
         return Bitmap.createBitmap(bitmap, (int)topleftx, (int)toplefty, (int)width, (int)height); //, matrix, true);
 
     }
+
+
+    // Crops bitmap based on drawView points
+    public Bitmap cropImage90s(Bitmap bitmap){
+
+        if(DSI_height==0|this.DSI_width==0|this.cameraPictureHeight==0|this.cameraPictureWidth==0)
+            System.out.println("SOMETHING WENT WRONG");
+
+
+        float ratioWidth=(float) bitmap.getWidth() /(float)DSI_width;
+        float ratioHeight=(float) bitmap.getHeight() /(float)DSI_height;
+        float ratio;
+        if(ratioHeight<ratioWidth)
+            ratio=ratioHeight;
+        else
+            ratio=ratioWidth;
+
+        float topleftx=ratio * (float)drawView.topLeft().x;
+        float toplefty=ratio * (float)drawView.topLeft().y;
+        float toprightx=ratio * (float)drawView.topRight().x;
+        float toprighty=ratio * (float)drawView.topRight().y;
+        float bottomleftx=ratio * (float)drawView.bottomLeft().x;
+        float bottomlefty=ratio * (float)drawView.bottomLeft().y;
+        float bottomrightx=ratio * (float)drawView.bottomRight().x;
+        float bottomrighty=ratio * (float)drawView.bottomRight().y;
+
+        float rotatedTopLeftX=toprighty;
+        float rotatedTopLeftY=bitmap.getHeight()-toprightx;
+        float rotatedBottomRightX=bottomlefty;
+        float rotatedBottomRightY=bitmap.getHeight()-bottomleftx;
+
+        float rotatedTopRightX=bottomrighty;
+        float rotatedTopRightY=bitmap.getHeight()-bottomrightx;
+        float rotatedBottomLeftX=toplefty;
+        float rotatedBottomLeftY=bitmap.getHeight()-topleftx;
+
+        float width = rotatedBottomRightX-rotatedTopLeftX;
+        float height= rotatedBottomRightY-rotatedTopLeftY;
+
+
+        float[] src = new float[8];
+        src[0] = rotatedTopLeftX;
+        src[1] = rotatedTopLeftY;
+        src[2] = rotatedTopRightX;
+        src[3] = rotatedTopRightY;
+        src[4] = rotatedBottomRightX;
+        src[5] = rotatedBottomRightY;
+        src[6] = rotatedBottomLeftX;
+        src[7] = rotatedBottomLeftY;
+
+        float dstWidth,dstheight;
+        if((rotatedBottomRightX-rotatedBottomLeftX)>(rotatedTopRightX-rotatedTopLeftX))
+            dstWidth=(rotatedBottomRightX-rotatedBottomLeftX);
+        else
+            dstWidth=(rotatedTopRightX-rotatedTopLeftX);
+
+        if((rotatedBottomRightY-rotatedTopRightY)>(rotatedBottomLeftY-rotatedTopLeftY))
+            dstheight=(rotatedBottomRightY-rotatedTopRightY);
+        else
+            dstheight=(rotatedBottomLeftY-rotatedTopLeftY);
+
+        float[] dst = new float[8];
+        dst[0] = 0;
+        dst[1] = 0;
+        dst[2] = dstWidth;
+        dst[3] = 0;
+        dst[4] = dstWidth;
+        dst[5] = dstheight;
+        dst[6] = 0;
+        dst[7] = dstheight;
+
+        Matrix matrix = new Matrix();
+        //boolean mapped = matrix.setPolyToPoly(src, 0, dst, 0, 4);
+
+        matrix.postRotate(90);
+
+        return Bitmap.createBitmap(bitmap, 0, 0, (int)dstWidth, (int)dstheight, matrix, true);
+
+    }
+
 
     // Crops bitmaps that are horizontal, and transforms bitmaps to vertical.
     // Takes coordinates from drawView that are correct on the original vertical picture
@@ -649,8 +757,8 @@ public class AndroidCameraApi extends AppCompatActivity {
 
 
         RequestParams params = new RequestParams();
-        String url ="http://94.237.117.223/upload";
-//        String url ="http://192.168.42.113/upload";
+//        String url ="http://94.237.117.223/upload";
+        String url ="http://192.168.42.155/upload";
 
         try {
             params.put("file", fileToSend);
