@@ -12,7 +12,7 @@ This approach should be replaced in future, because it burdens the server with u
 
 
 ### CORS and proxy
-At the moment, the server does not return Access-Control-Allow-Origin -header. This raises [Cross-origin resource sharing](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) -error. To workaroud this issue, the webapplication uses proxy, which is configured in the package.json. In addition to the one line that has been inserted to package.json, the .env-file must also be edited to get the web-application work temporarily. While using the the proxy, the backend server addresses in .env-file must be left blank. Once the server has been updated to return correct header information, the proxy can be deleted from package.json and server addresses can be defined in .env-file.
+At the moment, the server does not return Access-Control-Allow-Origin -header. This raises [Cross-origin resource sharing](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) -error. To workaroud this issue, the web-application uses proxy, which is configured in the package.json. In addition to the one line that has been inserted to package.json, the .env-file must also be edited to get the web-application work temporarily. While using the the proxy, the backend server addresses in .env-file must be left blank. Once the server has been updated to return correct header information, the proxy can be deleted from package.json and server addresses can be defined in .env-file.
 
 
 
