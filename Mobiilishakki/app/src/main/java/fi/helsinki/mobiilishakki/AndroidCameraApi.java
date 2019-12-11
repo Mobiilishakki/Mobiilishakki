@@ -52,6 +52,12 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
+import org.opencv.imgproc.Imgproc;
+
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -70,7 +76,8 @@ import cz.msebera.android.httpclient.Header;
 
 public class AndroidCameraApi extends AppCompatActivity {
     private static final String TAG = "AndroidCameraApi";
-    private Button takePictureButton;
+    private Button startAsWhiteButton;
+    private Button startAsBlackButton;
     private TextureView textureView;
     private DrawView drawView;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
@@ -88,6 +95,10 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     int cameraPictureWidth = 0;
     int cameraPictureHeight = 0;
+
+    private static boolean blockPolling=false;
+
+    private static boolean isPlayerWhite;
 
 
     private String cameraId;
@@ -111,6 +122,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        OpenCVLoader.initDebug();
 
 
         textureView = (TextureView) findViewById(R.id.texture);
@@ -127,13 +139,22 @@ public class AndroidCameraApi extends AppCompatActivity {
 
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
-        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
-        takePictureButton.setZ(101);
-        assert takePictureButton != null;
-        takePictureButton.setOnClickListener(new View.OnClickListener() {
+        startAsWhiteButton = (Button) findViewById(R.id.btn_startAsWhite);
+        startAsWhiteButton.setZ(101);
+        startAsWhiteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                takePicture();
+                isPlayerWhite=true;
+                startGame();
+            }
+        });
+        startAsBlackButton = (Button) findViewById(R.id.btn_startAsBlack);
+        startAsBlackButton.setZ(101);
+        startAsBlackButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isPlayerWhite=false;
+                startGame();
             }
         });
 
@@ -242,8 +263,29 @@ public class AndroidCameraApi extends AppCompatActivity {
         }
     }
 
-    protected void takePicture() {
+    public void startGame() {
 
+            final Handler handler = new Handler();
+
+             Runnable runnable = new Runnable() {
+
+                public void run() {
+
+                    if(blockPolling==false)
+                        pollServer(isPlayerWhite);
+
+                    handler.postDelayed(this, 1000);
+
+                }
+            };
+
+        runnable.run();
+
+    }
+
+    public void sendPicture(){
+
+        System.out.println("SEND SEND SEND PICTURE PICTURE");
         if (null == cameraDevice) {
             Log.e(TAG, "cameraDevice is null");
             return;
@@ -300,15 +342,9 @@ public class AndroidCameraApi extends AppCompatActivity {
                     BufferedWriter bufferedWriter=null;
                     File fileToSend =null;
                     try {
-
-                        System.out.println("eka");
-
                         image = reader.acquireLatestImage();
-                        System.out.println("toka");
                         fileToSend = File.createTempFile("Chess",".jpg");
-                        System.out.println("kolmas");
 
-                        //cropImage(image);                                                   // New rectagle CROP
 
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
 
@@ -345,30 +381,27 @@ public class AndroidCameraApi extends AppCompatActivity {
                         output.flush();
                         output.close();
 
+                        System.out.println("SENDFILE SENDFILE SENDFILE");
+                        sendFile(fileToSend);
 
-
+/*
                         // BitmapFactory.Options options = new BitmapFactory.Options();
                        // options.inJustDecodeBounds = true;
                         Bitmap bitmapImage=BitmapFactory.decodeFile(fileToSend.getAbsolutePath());
 
-
-
                         File fileToSend2 = File.createTempFile("Chess2",".jpg");
                         OutputStream output2=new FileOutputStream(fileToSend2);
                         bitmapImage=cropImage90(bitmapImage);
-
                         bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, output2);
 
                         image.close();
                         bitmapImage.recycle();
-
                         output2.flush();
                         output2.close();
-
                         System.out.println("PERKEL "+fileToSend.getTotalSpace());
                         sendFile(fileToSend2);
 
-
+*/
 
 
                     } catch (Exception e){
@@ -376,36 +409,6 @@ public class AndroidCameraApi extends AppCompatActivity {
 
                     }
 
-
-                    /*
-                    Image image = null;
-                    try {
-                        image = reader.acquireLatestImage();
-                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        byte[] bytes = new byte[buffer.capacity()];
-                        buffer.get(bytes);
-                        save(bytes);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (image != null) {
-                            image.close();
-                        }
-                    }
-                }
-
-                private void save(byte[] bytes) throws IOException {
-                    OutputStream output = null;
-                    try {
-                        output = new FileOutputStream(file);
-                        output.write(bytes);
-                    } finally {
-                        if (null != output) {
-                            output.close();
-                        }
-                    }*/
                 }
             };
             reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
@@ -590,10 +593,14 @@ public class AndroidCameraApi extends AppCompatActivity {
             System.out.println("SOMETHING WENT WRONG");
 
 
-        float ratioWidth=(float) bitmap.getWidth() /(float)DSI_width;
-        float ratioHeight=(float) bitmap.getHeight() /(float)DSI_height;
+        float ratioWidth=(float) bitmap.getHeight() /(float)DSI_width;
+        float ratioHeight=(float) bitmap.getWidth() /(float)DSI_height;
+
+        System.out.println("BITMAP W "+bitmap.getWidth()+" DSI W "+DSI_width+"  BITMAP H "+bitmap.getHeight()+ "  DSI H "+DSI_height);
+        System.out.println("RATIO W "+ratioWidth+"  RATIO H "+ratioHeight);
+
         float ratio;
-        if(ratioHeight<ratioWidth)
+        if(ratioHeight>ratioWidth)
             ratio=ratioHeight;
         else
             ratio=ratioWidth;
@@ -607,7 +614,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         float bottomrightx=ratio * (float)drawView.bottomRight().x;
         float bottomrighty=ratio * (float)drawView.bottomRight().y;
 
-        float rotatedTopLeftX=toprighty;
+/*      float rotatedTopLeftX=toprighty;
         float rotatedTopLeftY=bitmap.getHeight()-toprightx;
         float rotatedBottomRightX=bottomlefty;
         float rotatedBottomRightY=bitmap.getHeight()-bottomleftx;
@@ -616,6 +623,11 @@ public class AndroidCameraApi extends AppCompatActivity {
         float rotatedTopRightY=bitmap.getHeight()-bottomrightx;
         float rotatedBottomLeftX=toplefty;
         float rotatedBottomLeftY=bitmap.getHeight()-topleftx;
+*/
+
+        float rotatedTopLeftX=topleftx; float rotatedTopLeftY=toplefty; float rotatedTopRightX=toprightx;
+        float rotatedTopRightY=toprighty; float rotatedBottomRightX=bottomrightx; float rotatedBottomRightY=bottomrighty;
+        float rotatedBottomLeftX=bottomleftx; float rotatedBottomLeftY=bottomlefty;
 
         float width = rotatedBottomRightX-rotatedTopLeftX;
         float height= rotatedBottomRightY-rotatedTopLeftY;
@@ -642,23 +654,88 @@ public class AndroidCameraApi extends AppCompatActivity {
         else
             dstheight=(rotatedBottomLeftY-rotatedTopLeftY);
 
+        float startx,starty;
+
+        if(rotatedBottomLeftX<rotatedTopLeftX) {
+            startx=rotatedBottomLeftX;
+            if (rotatedBottomRightX < rotatedTopRightX) {
+                width = rotatedTopRightX - rotatedBottomLeftX;}
+            else{
+                width = rotatedBottomRightX - rotatedBottomLeftX;
+            }
+        }
+        else{
+            startx=rotatedTopLeftX;
+            if (rotatedBottomRightX < rotatedTopRightX) {
+                width = rotatedTopRightX - rotatedTopLeftX;}
+            else{
+                width = rotatedBottomRightX - rotatedTopLeftX;
+            }
+        }
+        if(rotatedBottomLeftY<rotatedBottomRightY) {
+
+            if (rotatedTopLeftY<rotatedTopRightY) {
+                starty=rotatedTopLeftY;
+                height = rotatedBottomRightY - rotatedTopLeftY;}
+            else{
+                starty=rotatedTopRightY;
+                height = rotatedBottomRightY - rotatedTopRightY;
+            }
+        }
+        else{
+
+            if (rotatedTopLeftY<rotatedTopRightY) {
+                starty=rotatedTopLeftY;
+                height = rotatedBottomLeftY - rotatedTopLeftY;}
+            else{
+                starty=rotatedTopRightY;
+                height = rotatedBottomLeftY - rotatedTopRightY;
+            }
+        }
+
+
         float[] dst = new float[8];
         dst[0] = 0;
         dst[1] = 0;
-        dst[2] = dstWidth;
+        dst[2] = width;
         dst[3] = 0;
-        dst[4] = dstWidth;
-        dst[5] = dstheight;
+        dst[4] = width;
+        dst[5] = height;
         dst[6] = 0;
-        dst[7] = dstheight;
+        dst[7] = height;
 
         Matrix matrix = new Matrix();
-        //boolean mapped = matrix.setPolyToPoly(src, 0, dst, 0, 4);
+        boolean mapped = matrix.setPolyToPoly(src, 0, dst, 0, 4);
 
-        matrix.postRotate(90);
+        System.out.println(" TOIMIIKO POLYPOLY "+mapped);
 
-        return Bitmap.createBitmap(bitmap, 0, 0, (int)dstWidth, (int)dstheight, matrix, true);
+        System.out.println("topLX  " + topleftx+" topLY " + toplefty +" topRX " + toprightx+" topRY " + toprighty);
+        System.out.println(" BotLX " + bottomleftx+" botLY " + bottomlefty+" botRX " + bottomrightx+" botRY " + bottomrighty);
 
+        System.out.println("yllä alkup koordinaatit, alla rotatoidut");
+        System.out.println("topLX  " + rotatedTopLeftX+" topLY " + rotatedTopLeftY +" topRX " + rotatedTopRightX+" topRY " + rotatedTopRightY);
+        System.out.println(" BotLX " + rotatedBottomLeftX+" botLY " + rotatedBottomLeftY+" botRX " + rotatedBottomRightX+" botRY " + rotatedBottomRightY);
+        System.out.println(" Width " + width+" Height " + height+" startX " + startx+" startY " + starty);
+
+
+        Matrix matrix2 = new Matrix();
+        matrix2.postRotate(90);
+
+        Bitmap rotatedBitmap=Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix2, true);
+        return Bitmap.createBitmap(rotatedBitmap, (int)rotatedTopLeftX,(int)rotatedTopLeftY, (int)width, (int) height, matrix, true);
+
+       // return changePerspective(new Point(topleftx,toplefty), new Point(toprightx,toprighty),new Point(bottomrightx,bottomrighty),new Point(bottomleftx,bottomlefty),rotatedBitmap);
+
+        // return Bitmap.createBitmap((Bitmap.createBitmap(bitmap, (int)startx,(int)starty, (int)width, (int) height, matrix, true)),0,0,(int)width, (int) height, matrix2, true);
+        //return Bitmap.createBitmap(bitmap, (int)startx,(int)starty, (int)width, (int) height, matrix, true);
+        // return Bitmap.createBitmap(bitmap, 0, 0, (int)dstWidth, (int)dstheight, matrix, true);
+
+        //bitmap=Bitmap.createBitmap(bitmap,0,0,bitmap.getWidth(),bitmap.getHeight(),matrix2,true);
+       // Bitmap dstBitmap = Bitmap.createBitmap((int)width, (int) height, Bitmap.Config.RGB_565);
+       // Canvas canvas = new Canvas(dstBitmap);
+        //canvas.clipRect(0, 0, (int)width, (int) height);
+       // canvas.drawBitmap(bitmap, matrix, null);
+       // return dstBitmap;
     }
 
 
@@ -697,6 +774,32 @@ public class AndroidCameraApi extends AppCompatActivity {
         matrix.postRotate(90);
         return Bitmap.createBitmap(bitmap, rotatedTopLeftX,rotatedTopLeftY, width, height, matrix, true);
 
+    }
+
+    private static  Bitmap changePerspective(Point topLeft, Point topRight, Point lowRight, Point lowLeft, Bitmap bitmap){
+
+        Mat source=new Mat();
+        Mat destination=new Mat();
+        //bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+        org.opencv.android.Utils.bitmapToMat(bitmap, source);
+
+        MatOfPoint2f sourcePoints=new MatOfPoint2f(topLeft, topRight, lowRight, lowLeft);
+        int width;
+        if(source.width()>source.height()){
+            width=source.height();
+        } else {
+            width=source.width();
+        }
+        System.out.println("LEVEYS = "+width);
+        MatOfPoint2f goalPoints=new MatOfPoint2f(new Point(0,0), new Point(width-1,0), new Point(width-1, width-1),new Point(0,width-1));
+
+        Mat transform= Imgproc.getPerspectiveTransform(sourcePoints,goalPoints);
+
+        Imgproc.warpPerspective(source, destination, transform, new org.opencv.core.Size(source.width(), source.height()));
+
+        org.opencv.android.Utils.matToBitmap(destination,bitmap);
+        return bitmap;
     }
 
     private void closeCamera() {
@@ -747,18 +850,58 @@ public class AndroidCameraApi extends AppCompatActivity {
         speaker.speak(line, TextToSpeech.QUEUE_FLUSH, null);
     }
 
+
+
+    public boolean pollServer(final boolean isWhite){
+        RequestParams params = new RequestParams();
+        String url ="http://94.237.117.223/snapshot";
+        //String url ="http://192.168.43.133/snapshot";
+        AsyncHttpClient client = new AsyncHttpClient();
+        final boolean[] pollResult=new boolean[1];
+        pollResult[0]=false;
+        // Toast.makeText(AndroidCameraApi.this, "testin vuoksi", Toast.LENGTH_LONG).show();
+        client.setTimeout(333);
+        client.setResponseTimeout(333);
+        client.get(url,new AsyncHttpResponseHandler(){
+            @Override
+            public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
+                //fileToSend.delete();
+                String ko=new String(bytes);
+                System.out.println("POLLAUKSESTA TAKAISIN "+ko);
+                System.out.println("VÄRI true = white " + isWhite);
+                if(isWhite){
+                    if(ko.equals("white")){
+                        System.out.println("WHITE pollresult muutettu");
+                        blockPolling=true;
+                        sendPicture();                    }
+
+                }
+                else{
+                    if(ko.equals("black")){
+                        System.out.println("BLACK pollresult muutettu");
+                        blockPolling=true;
+                        sendPicture();
+                    }
+                }
+
+            }
+
+            @Override
+            public void onFailure (int statusCode, Header[] headers, byte[] bytes, Throwable throwable){
+
+                String ko=Arrays.toString(bytes);
+                System.out.println("FAIL POLLAUKSESTA TAKAISIN "+ko);
+            }
+
+        });
+
+        return pollResult[0];
+    }
     public void sendFile(File fileToSend) {
 
-       // File file = new File(this.getFilesDir(), "tiedosto");
-        //file = fileToSend;
-      //  System.out.println("KOKOKO "+fileToSend.length);
-
-//       showPicture(fileToSend);
-
-
         RequestParams params = new RequestParams();
-//        String url ="http://94.237.117.223/upload";
-        String url ="http://192.168.42.155/upload";
+        String url ="http://94.237.117.223/upload";
+//        String url ="http://192.168.43.133/upload";
 
         try {
             params.put("file", fileToSend);
@@ -769,7 +912,8 @@ public class AndroidCameraApi extends AppCompatActivity {
             // send request
         AsyncHttpClient client = new AsyncHttpClient();
        // Toast.makeText(AndroidCameraApi.this, "testin vuoksi", Toast.LENGTH_LONG).show();
-        client.setTimeout(50000);
+        client.setTimeout(30000);
+        client.setResponseTimeout(30000);
         client.post(url,params,new AsyncHttpResponseHandler(){
             @Override
             public void onSuccess (int statusCode, Header[] headers, byte[] bytes){
@@ -777,8 +921,8 @@ public class AndroidCameraApi extends AppCompatActivity {
                 System.out.println("MAKKARA");
                 String byt=new String(bytes);
                 String koo=headers.toString()+"__"+byt;
-                Toast.makeText(AndroidCameraApi.this, koo, Toast.LENGTH_LONG).show();
-                //drawResult("success");
+                //Toast.makeText(AndroidCameraApi.this, koo, Toast.LENGTH_LONG).show();
+                blockPolling=false;
             }
 
             @Override
@@ -787,183 +931,11 @@ public class AndroidCameraApi extends AppCompatActivity {
                 //drawResult("fucked");
                 String byt=new String(bytes);
                 String koo=headers.toString()+"__"+byt;
-                Toast.makeText(AndroidCameraApi.this, "Fail "+ koo, Toast.LENGTH_LONG).show();
+                //Toast.makeText(AndroidCameraApi.this, "Fail "+ koo, Toast.LENGTH_LONG).show();
+                blockPolling=false;
             }
         });
     }
-
-    public void showPicture(File picture){
-
-        /*
-        this.textureView.setEnabled(false);
-        this.closeCamera();
-
-        //setContentView(R.layout.activity_menu);
-
-       float[] NEGATIVE = {
-                -1.0f,     0,     0,    0, 255, // red
-                0, -1.0f,     0,    0, 255, // green
-                0,     0, -1.0f,    0, 255, // blue
-                0,     0,     0, 1.0f,   0  // alpha
-        };
-
-        */
-      //  File chess=new File(getDataDir()+"/chess.jpg");
-
-
-        //System.out.println("CHESSCHESS " + chess.exists());
-
-
-    //    ImageView mImageView;
-
-    //    mImageView = (ImageView) findViewById(R.id.board_coord);
-        //mImageView.setImageBitmap(BitmapFactory.decodeFile(chess.getAbsolutePath()));
-
-        AssetManager assetManager = getAssets();
-        InputStream is = null;
-        try {
-            is = assetManager.open("chess.jpg");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mImageView.setImageBitmap(BitmapFactory.decodeStream(is));
-
-
-
- //       this.runOnUiThread(java.lang.Runnable{
- //           mImageView.setImageBitmap(BitmapFactory.decodeStream(is))
- //       });
-
-
-
-    //mImageView.setColorFilter(new ColorMatrixColorFilter(NEGATIVE));
-        mImageView.setVisibility(View.VISIBLE);
-
-
-    }
-
-    public void drawResult(byte[] bytes){
-        TextView textView_res = findViewById(R.id.img_result);
-        try {
-            String res = new String(bytes, "UTF-8");
-            textView_res.setText(res);
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            textView_res.setText("ERROR");
-        }
-        textView_res.setVisibility(View.VISIBLE);
-    }
-    public void drawResult(String text){
-        TextView textView_res = findViewById(R.id.img_result);
-        textView_res.setText(text);
-        textView_res.setVisibility(View.VISIBLE);
-    }
-
 }
 
 
-
-
-
-
-
-//import androidx.appcompat.app.AppCompatActivity;
-//
-//import android.graphics.Bitmap;
-//import android.hardware.Camera;
-//import android.os.Bundle;
-//import android.util.Log;
-//import android.view.WindowManager;
-//import android.widget.FrameLayout;
-//import android.widget.ImageView;
-//
-//import org.opencv.android.OpenCVLoader;
-//
-//public class MainActivity extends AppCompatActivity implements Camera.PreviewCallback {
-//
-//    // Used for logging success or failure messages
-//    private static final String TAG = "MainActivity";
-//    // Camera object
-//    private Camera mCamera;
-//    // Preview object
-//    private CameraPreview mPreview;
-//    // Thread to process frame data
-//    private Thread ocvThread;
-//    // Chessboard analyzer
-//    private ChessboardAnalyzer cbAnalyzer;
-//    // ImageView
-//    private ImageView imageView;
-//
-//    // Load openCV before onCreate
-//    static {
-//        if (!OpenCVLoader.initDebug()) {
-//            // Handle initialization error
-//        }
-//    }
-//
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        Log.i(TAG, "Called onCreate!");
-//        super.onCreate(savedInstanceState);
-//        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-//        setContentView(R.layout.activity_main);
-//
-//        // Create an instance of Camera
-//        mCamera = getCameraInstance();
-//
-//        // Set camera to continually auto-focus
-//        Camera.Parameters params = mCamera.getParameters();
-//        params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-//        params.setPreviewSize(1280, 960);  // BAD --> USE get supportedPreviewSize
-//        mCamera.setParameters(params);
-//
-//        // Create our preview view and set it as the content of our activity
-//        mPreview = new CameraPreview(this, mCamera, this);
-//
-//        mPreview.g
-//        FrameLayout preview = findViewById(R.id.camera_preview);
-//        preview.addView(mPreview);
-//
-//        // Create new chessboard analyzer
-//        cbAnalyzer = new ChessboardAnalyzer();
-//
-//        // Set ImageVIew
-//        imageView = findViewById(R.id.imageView);
-//
-//    }
-//
-//    /**
-//     * Get camera instance. Returns null if instance could not be opened.
-//     *
-//     * @return camera
-//     */
-//    public static Camera getCameraInstance() {
-//        Camera c = null;
-//        try {
-//            c = Camera.open();  // attempt to get a Camera instance
-//        } catch (Exception e) {
-//            // Camera is not available (in use or does not exist)
-//        }
-//        return c;   // returns null if camera is unavailable
-//    }
-//
-//    @Override
-//    public void onPreviewFrame(byte[] bytes, Camera camera) {
-//        Log.i(TAG, "Called onPreviewFrame!");
-//
-//        // If thread does not exist or is dead --> create new one
-//        if (ocvThread == null || ocvThread.isAlive() == false) {
-//            Bitmap bitmap = cbAnalyzer.getFrameInBitmap();
-//            if (bitmap != null) {
-//                imageView.setImageBitmap(bitmap);
-//            }
-//            // Update frame data to chessboard analyzer
-//            cbAnalyzer.setFrameBytes(bytes, mCamera.getParameters());
-//            // Create new thread and run it
-//            ocvThread = new Thread(cbAnalyzer);
-//            ocvThread.start();
-//        }
-//    }
-//
-//}
-//
