@@ -37,12 +37,18 @@ Currently the problems with board recognision are circumvented by having the use
 In future a proper board recognision functionality could be added, provided enough resources and knowledge.
 
 ### Android & Android Studio
-todo
+Android Studio created some problems, mainly because we had no experience on it. Connection with Android phones and getting developer mode on also caused some problems in the beginning.
+
+The App requires Android phone with API level of 23. It's the requirement for Async HTTP Library. Android's Camera 2 API requires API level of 21.
+
+While old Android camera API has been deprecated for a long time and most phones support API level 23, they still have problems with certain aspects of it. Full support varies with different models, but most phones since 2017, at least from most known manufacturers, are fully compatible.
+
 
 ## Related Material
 * https://web.stanford.edu/class/cs231a/prev_projects_2016/CS_231A_Final_Report.pdf
     * https://github.com/jialinding/ChessVision
 * https://arxiv.org/pdf/1708.03898.pdf
+https://loopj.com/android-async-http/
 * https://medium.com/@daylenyang/building-chess-id-99afa57326cd
     * https://github.com/daylen/chess-id
 * https://tech.bakkenbaeck.com/post/chessvision
