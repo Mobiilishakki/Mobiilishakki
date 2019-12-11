@@ -45,4 +45,5 @@
     * Streaming functionality
     * Works from game state
     * disable outside activity
+    
 
