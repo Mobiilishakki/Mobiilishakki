@@ -4,9 +4,12 @@
 * Functionality for handling unique game instances for different players
     * Matchmaking
     * Leaderboards?
+    * Invitation for friends
+    * Game modes: single / tournament / etc.
 * Using chess logic to optimize machine learning solutions 
     * Examples: always two kings on board, no more than 8 pawns per side, and so on
     * Comparing to previous states to eliminate errors in recognision
+    * Research other possible options for improving recognision
 * Validation for moves
     * Not saving illegal moves
     * Warning player of illegal moves
@@ -22,7 +25,9 @@
     * Go back to previous game and see better moves & tips to improve
     * See statistics of own games, progress, playing habits, etc.
     * Simulated exercises
-* iPhone app
+* Other platforms
+    * iPhone app
+    * Smart TV (app or through web)
 * User accounts
     * Design functionality / features
     * Implement (phone app & Web-app)
@@ -35,8 +40,9 @@
     * What if not enough unique pieces? Ex. Trying to raise Pawn to Queen, but no extra Queen pieces.
     * Input from player? But what about discepancy with model?
 * Nicer UI & Graphics
-* Text-to-Speech & other accessibility
-* Sharing game footage live & spectating others games 
+* Text-to-Speech & other accessibility features
+* Sharing game footage live & spectating others games
+    * Streaming functionality
     * Works from game state
     * disable outside activity
 
