@@ -14,7 +14,7 @@ The application could additionally offer services for playing not only against h
 
 # Contributors
 
-[Juha Paljakka](https://github.com/jpaljakk)
+[J. Paljakka](https://github.com/jpaljakk)
 
 [Martin Vidjeskog](https://github.com/mevid93)
 
