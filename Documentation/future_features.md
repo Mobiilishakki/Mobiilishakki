@@ -36,5 +36,7 @@
     * Input from player? But what about discepancy with model?
 * Nicer UI & Graphics
 * Text-to-Speech & other accessibility
-* 
+* Sharing game footage live & spectating others games 
+    * Works from game state
+    * disable outside activity
 

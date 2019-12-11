@@ -11,7 +11,8 @@ Currently, the web-application is used to tell the server when player has made h
 This approach should be replaced in future, because it burdens the server with unnecessary requests.
 
 
-### 
+### Turn-clock solution in Web-app
+todo
 
 
 
