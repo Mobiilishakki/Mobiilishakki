@@ -53,4 +53,4 @@ Before training, every square is also cloned 3 times and each clone is rotated b
 
 ## Classifying
 
-The classifying in the **app.py** file is done when a HTTP POST request is sent to the '/upload' path with an image in it. First, the chessboard is detected from the image and cropped automatically, then the resulting image is splitted automatically into 64 squares. Then each of those squares is fed to the PyTorch network, which will give its prediction as a result. The prediction of each square is appended into a string so that the resulting string is the fen notation of the board state.
+The classifying in the **app.py** file is done when a HTTP POST request is sent to the '/upload' path with an image in it. First, the chessboard is detected from the image and cropped automatically, then the resulting image is splitted automatically into 64 squares. Then each of those squares is fed to the PyTorch network, which will give its prediction as a result. The prediction of each square is appended into a string so that the resulting string is the FEN notation of the board state.

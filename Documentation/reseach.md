@@ -55,3 +55,4 @@ https://loopj.com/android-async-http/
 * https://tech.bakkenbaeck.com/post/chessvision
 * https://github.com/bakkenbaeck/chessboardeditor
 * https://github.com/maciejczyzewski/neural-chessboard
+* https://www.researchgate.net/publication/328461364_Chessboard_and_chess_piece_recognition_with_the_support_of_neural_networks

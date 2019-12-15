@@ -1,5 +1,5 @@
 
-# Temporary Solutions and Functionality
+# Temporary solutions and functionality
 
 ### Board recognition
 
