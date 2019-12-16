@@ -52,6 +52,8 @@ import java.util.Locale;
 
 import cz.msebera.android.httpclient.Header;
 
+
+
 public class MobiiliShakki extends AppCompatActivity {
     private static final String TAG = "MobiiliShakki";
 
@@ -94,11 +96,11 @@ public class MobiiliShakki extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textureView = (TextureView) findViewById(R.id.texture);
+        textureView = findViewById(R.id.texture);
 
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
-        startAsWhiteButton = (Button) findViewById(R.id.btn_startAsWhite);
+        startAsWhiteButton = findViewById(R.id.btn_startAsWhite);
         startAsWhiteButton.setZ(101);
         startAsWhiteButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -108,7 +110,8 @@ public class MobiiliShakki extends AppCompatActivity {
             }
         });
 
-        startAsBlackButton = (Button) findViewById(R.id.btn_startAsBlack);
+
+        startAsBlackButton = findViewById(R.id.btn_startAsBlack);
         startAsBlackButton.setZ(101);
         startAsBlackButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -129,6 +132,8 @@ public class MobiiliShakki extends AppCompatActivity {
         });
     }
 
+
+    // setup textureview so that aspect ratio from camera is not changed
     private void setAspectRatioTextureView(int ResolutionWidth , int ResolutionHeight )
     {
         if(ResolutionWidth > ResolutionHeight){
