@@ -2,7 +2,8 @@
     <string name="app_name">Mobiilishakki</string>
     <string name="opencv_status_message">OpenCV status message</string>
     <string name="viewButtonText">Swap video settings</string>
-    <string name="take_picture">Take picture</string>
+    <string name="asWhite">Start as White</string>
+    <string name="asBlack">Start as Black</string>
     <string name="menuExitButtonText">Exit</string>
     <string name="menuTitleTextView">Mobiilishakki</string>
     <string name="img_result" />

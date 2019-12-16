@@ -23,7 +23,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".AndroidCameraApi">
+            android:name=".MobiiliShakki">
         </activity>
     </application>
 

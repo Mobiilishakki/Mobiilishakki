@@ -33,7 +33,7 @@ public class MenuActivity extends AppCompatActivity {
      */
     public void startCameraActivity(View view) {
         Log.i(TAG, "Called startCameraActivity");
-        Intent intent = new Intent(this, AndroidCameraApi.class);
+        Intent intent = new Intent(this, MobiiliShakki.class);
         startActivity(intent);
     }
 }

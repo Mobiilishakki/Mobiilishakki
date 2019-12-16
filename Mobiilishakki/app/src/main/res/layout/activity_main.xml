@@ -5,18 +5,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="fi.helsinki.mobiilishakki.AndroidCameraApi">
+    tools:context="fi.helsinki.mobiilishakki.MobiiliShakki">
 
     <Button
-        android:id="@+id/btn_takepicture"
+        android:id="@+id/btn_startAsWhite"
         android:layout_width="230dp"
         android:layout_height="97dp"
+        android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
         android:background="@drawable/custom_textview"
-        android:text="@string/take_picture" />
+        android:text="Start as White" />
+
+    <Button
+        android:id="@+id/btn_startAsBlack"
+        android:layout_width="230dp"
+        android:layout_height="97dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/custom_textview"
+        android:text="Start as Black" />
 
     <TextView
         android:id="@+id/img_result"
